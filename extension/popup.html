@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Telegram Radar</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0;
+        width: 280px;
+        background: radial-gradient(circle at top, #0b1c3d 0%, #030914 70%);
+        color: #e7f0ff;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        padding: 12px;
+      }
+
+      main {
+        border: 1px solid #28406b;
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(7, 18, 40, 0.9);
+        box-shadow: 0 10px 26px rgba(1, 7, 20, 0.4);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      p {
+        margin: 4px 0 12px;
+        color: #aac0e3;
+        font-size: 0.84rem;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      #openLogin {
+        background: linear-gradient(135deg, #3dd7ff 0%, #52bcff 100%);
+        color: #042235;
+        margin-bottom: 8px;
+      }
+
+      #openPanel {
+        border-color: #3b5686;
+        background: #172a48;
+        color: #d9e6fb;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1>Telegram Radar</h1>
+      <p>Acesse o login ou abra o painel principal.</p>
+
+      <button id="openLogin" type="button">Login Telegram</button>
+      <button id="openPanel" type="button">Abrir painel</button>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

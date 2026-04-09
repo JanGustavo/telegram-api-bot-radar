@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+
+# Local secrets and machine files
+.env
+.openclaude-profile.json
+
+# Telegram session files (sensitive)
+*.session
+sessions/*.session
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/

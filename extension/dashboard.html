@@ -1,0 +1,226 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Telegram Radar</title>
+
+    <style>
+      body {
+        background: #070f1f;
+        color: #e7f0ff;
+        font-family: Segoe UI;
+        margin: 0;
+        padding: 30px;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: auto;
+      }
+
+      .panel {
+        background: #0d1a33;
+        border: 1px solid #223a66;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .box {
+        background: #0f2246;
+        border: 1px solid #2d4d86;
+        border-radius: 12px;
+        padding: 15px;
+        max-height: 400px;
+        overflow: auto;
+      }
+
+      .group {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #0b1f42;
+        border: 1px solid #27457a;
+      }
+
+      .group-name {
+        flex: 1;
+        text-align: left;
+        word-break: break-word;
+      }
+
+      .group input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        flex-shrink: 0;
+      }
+
+      .blacklist {
+        margin-bottom: 12px;
+        padding: 10px;
+        border-radius: 10px;
+        background: #0b1c3d;
+        border: 1px solid #284a80;
+      }
+
+      .blacklist-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .blacklist-row input {
+        margin-top: 0;
+      }
+
+      .blacklist-btn {
+        width: auto;
+        min-width: 88px;
+        margin-top: 0;
+        background: #214a85;
+        color: #dbe9ff;
+        font-weight: 600;
+      }
+
+      .blacklist-tags {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .blacklist-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: #163564;
+        border: 1px solid #2d5da5;
+        font-size: 12px;
+      }
+
+      .blacklist-tag button {
+        width: auto;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #b6d2ff;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: none;
+        margin-top: 10px;
+        cursor: pointer;
+      }
+
+      .btn {
+        background: #47d9ff;
+        color: #032433;
+        font-weight: bold;
+      }
+
+      input {
+        width: 100%;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #375a9a;
+        background: #08152e;
+        color: white;
+        margin-top: 6px;
+      }
+
+      .filter {
+        background: #081c3d;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="panel header">
+        <h2>Telegram Radar</h2>
+
+        <div id="user">verificando login...</div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h3>Grupos</h3>
+
+          <div class="blacklist">
+            <div class="blacklist-row">
+              <input
+                id="blacklistInput"
+                placeholder="bloquear grupos com este nome"
+              />
+              <button id="addBlacklistBtn" class="blacklist-btn" type="button">
+                Bloquear
+              </button>
+            </div>
+
+            <div id="blacklistTags" class="blacklist-tags"></div>
+          </div>
+
+          <div id="groups" class="box">carregando grupos...</div>
+        </div>
+
+        <div class="panel">
+          <h3>Filtros</h3>
+
+          <div id="filters" class="box">
+            <div class="filter">
+              <b>iphone 16</b>
+
+              <input placeholder="preco maximo" />
+
+              <input placeholder="cor" />
+            </div>
+
+            <div class="filter">
+              <b>celular</b>
+
+              <input placeholder="ram minima" />
+
+              <input placeholder="ano minimo" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <button id="startScannerBtn" class="btn" type="button">
+          Iniciar monitoramento
+        </button>
+      </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+  </body>
+</html>
