@@ -1,34 +1,69 @@
 const API_BASE_URL = "http://localhost:8000";
 let sendCodeInFlight = false;
 
+function getCodeStep() {
+  return document.getElementById("codeStep");
+}
+
+function showCodeStep() {
+  const codeStep = getCodeStep();
+  const sendCodeBtn = document.getElementById("sendCodeBtn");
+
+  requestAnimationFrame(() => {
+    codeStep.classList.add("is-visible");
+    codeStep.setAttribute("aria-hidden", "false");
+    // Esconde o botão de enviar código após o sucesso
+    if (sendCodeBtn) sendCodeBtn.style.display = "none";
+  });
+}
+
 function saveAuthSession() {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.set(
-      {
-        telegramAuth: {
-          logged: true,
-          savedAt: Date.now(),
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set(
+        {
+          telegramAuth: {
+            logged: true,
+            savedAt: Date.now(),
+          },
         },
-      },
-      () => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
+        () => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          resolve();
         }
-        resolve();
-      }
-    );
+      );
+    } else {
+      // Fallback para desenvolvimento web normal
+      localStorage.setItem('telegramAuth', JSON.stringify({ logged: true, savedAt: Date.now() }));
+      resolve();
+    }
   });
 }
 
 function openDashboard() {
-  window.location.href = chrome.runtime.getURL("dashboard.html");
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+    window.location.href = chrome.runtime.getURL("dashboard.html");
+  } else {
+    window.location.href = "dashboard.html";
+  }
 }
 
 function setStatus(message, type = "info") {
   const status = document.getElementById("status");
   status.textContent = message;
   status.className = `status ${type}`;
+  
+  // Adiciona ícones baseados no tipo
+  let icon = "";
+  switch(type) {
+    case "success": icon = "✅ "; break;
+    case "error": icon = "❌ "; break;
+    case "info": icon = "ℹ️ "; break;
+  }
+  status.textContent = icon + message;
 }
 
 async function extractErrorMessage(response, fallbackMessage) {
@@ -55,7 +90,8 @@ async function sendCode() {
 
   sendCodeInFlight = true;
   sendCodeBtn.disabled = true;
-  setStatus("Enviando codigo...", "info");
+  sendCodeBtn.innerHTML = '<span class="spinner"></span> Enviando...';
+  setStatus("Enviando código...", "info");
 
   try {
     const response = await fetch(`${API_BASE_URL}/send.code`, {
@@ -65,15 +101,20 @@ async function sendCode() {
     });
 
     if (!response.ok) {
-      const detail = await extractErrorMessage(response, "Falha ao enviar o codigo.");
+      const detail = await extractErrorMessage(response, "Falha ao enviar o código.");
       setStatus(detail, "error");
       return;
     }
 
-    setStatus("Codigo enviado no Telegram.", "success");
+    setStatus("Código enviado no Telegram.", "success");
+    showCodeStep();
+  } catch (error) {
+    setStatus("Erro de conexão com o servidor.", "error");
+    console.error(error);
   } finally {
     sendCodeInFlight = false;
     sendCodeBtn.disabled = false;
+    sendCodeBtn.innerHTML = 'Enviar código';
   }
 }
 
@@ -82,16 +123,19 @@ async function login() {
   const loginBtn = document.getElementById("loginBtn");
 
   if (!code) {
-    setStatus("Digite o codigo recebido.", "error");
+    setStatus("Digite o código recebido.", "error");
     return;
   }
 
   loginBtn.disabled = true;
-  setStatus("Validando codigo...", "info");
+  const originalText = loginBtn.innerHTML;
+  loginBtn.innerHTML = '<span class="spinner"></span> Validando...';
+  setStatus("Validando código...", "info");
 
   try {
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
@@ -107,14 +151,26 @@ async function login() {
     try {
       await saveAuthSession();
     } catch (error) {
-      console.error("Nao foi possivel salvar sessao local:", error);
+      console.error("Não foi possível salvar sessão local:", error);
     }
 
-    setTimeout(openDashboard, 450);
+    setTimeout(openDashboard, 800);
+  } catch (error) {
+    setStatus("Erro ao processar login.", "error");
+    console.error(error);
   } finally {
     loginBtn.disabled = false;
+    loginBtn.innerHTML = originalText;
   }
 }
 
 document.getElementById("sendCodeBtn").addEventListener("click", sendCode);
 document.getElementById("loginBtn").addEventListener("click", login);
+
+// Permitir pressionar Enter nos campos
+document.getElementById("phone").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendCode();
+});
+document.getElementById("code").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") login();
+});

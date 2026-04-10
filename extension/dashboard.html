@@ -1,221 +1,531 @@
 <!doctype html>
-<html>
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Telegram Radar</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Telegram Radar | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      body {
-        background: #070f1f;
-        color: #e7f0ff;
-        font-family: Segoe UI;
+      :root {
+        --primary: #0088cc;
+        --primary-hover: #0077b5;
+        --bg-dark: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.7);
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --border-color: rgba(255, 255, 255, 0.1);
+        --input-bg: rgba(15, 23, 42, 0.6);
+        --success: #10b981;
+        --error: #ef4444;
+        --info: #3b82f6;
+        --warning: #f59e0b;
+      }
+
+      * {
         margin: 0;
-        padding: 30px;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        background-color: var(--bg-dark);
+        background-image:
+          radial-gradient(
+            at 0% 0%,
+            rgba(0, 136, 204, 0.1) 0px,
+            transparent 50%
+          ),
+          radial-gradient(
+            at 100% 100%,
+            rgba(0, 136, 204, 0.05) 0px,
+            transparent 50%
+          );
+        color: var(--text-main);
+        padding: 24px;
       }
 
       .container {
-        max-width: 1000px;
-        margin: auto;
+        max-width: 1100px;
+        margin: 0 auto;
+        animation: fadeIn 0.6s ease-out;
       }
 
-      .panel {
-        background: #0d1a33;
-        border: 1px solid #223a66;
-        border-radius: 14px;
-        padding: 20px;
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding: 20px 24px;
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+      }
+
+      .logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--primary);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logo-icon svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+      }
+
+      h2 {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+      }
+
+      .user-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 8px 16px;
+        border-radius: 99px;
+        font-size: 14px;
+        font-weight: 500;
+        border: 1px solid var(--border-color);
+      }
+
+      .user-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .btn-logout {
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.12);
+        color: #fecaca;
+        padding: 10px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-logout:hover {
+        background: rgba(239, 68, 68, 0.18);
+        border-color: rgba(239, 68, 68, 0.45);
+        transform: translateY(-1px);
+      }
+
+      .btn-logout:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .status-dot.online {
+        background: var(--success);
+        box-shadow: 0 0 8px var(--success);
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      @media (max-width: 900px) {
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 20px;
       }
 
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-      }
-
-      .box {
-        background: #0f2246;
-        border: 1px solid #2d4d86;
-        border-radius: 12px;
-        padding: 15px;
-        max-height: 400px;
-        overflow: auto;
-      }
-
-      .group {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 8px;
-        padding: 8px 10px;
-        border-radius: 8px;
-        background: #0b1f42;
-        border: 1px solid #27457a;
-      }
-
-      .group-name {
-        flex: 1;
-        text-align: left;
-        word-break: break-word;
-      }
-
-      .group input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        margin: 0;
-        flex-shrink: 0;
-      }
-
-      .blacklist {
-        margin-bottom: 12px;
-        padding: 10px;
-        border-radius: 10px;
-        background: #0b1c3d;
-        border: 1px solid #284a80;
-      }
-
-      .blacklist-row {
-        display: flex;
-        gap: 8px;
-      }
-
-      .blacklist-row input {
-        margin-top: 0;
-      }
-
-      .blacklist-btn {
-        width: auto;
-        min-width: 88px;
-        margin-top: 0;
-        background: #214a85;
-        color: #dbe9ff;
+      h3 {
+        font-size: 18px;
         font-weight: 600;
+        color: var(--text-main);
       }
 
-      .blacklist-tags {
-        margin-top: 10px;
+      /* Blacklist Styles */
+      .blacklist-controls {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .blacklist-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        padding: 5px 10px;
-        background: #163564;
-        border: 1px solid #2d5da5;
-        font-size: 12px;
-      }
-
-      .blacklist-tag button {
-        width: auto;
-        margin: 0;
-        padding: 0;
-        border: none;
-        background: transparent;
-        color: #b6d2ff;
-        cursor: pointer;
-        font-size: 13px;
-        line-height: 1;
-      }
-
-      button {
-        width: 100%;
-        padding: 12px;
-        border-radius: 10px;
-        border: none;
-        margin-top: 10px;
-        cursor: pointer;
-      }
-
-      .btn {
-        background: #47d9ff;
-        color: #032433;
-        font-weight: bold;
+        gap: 10px;
+        margin-bottom: 16px;
       }
 
       input {
-        width: 100%;
-        padding: 8px;
-        border-radius: 6px;
-        border: 1px solid #375a9a;
-        background: #08152e;
+        flex: 1;
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 10px 16px;
         color: white;
-        margin-top: 6px;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s;
       }
 
-      .filter {
-        background: #081c3d;
-        border-radius: 8px;
-        padding: 10px;
+      input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 136, 204, 0.1);
+      }
+
+      .btn-add {
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0 20px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-add:hover {
+        background: var(--primary-hover);
+      }
+
+      .blacklist-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+        min-height: 32px;
+      }
+
+      .blacklist-tag {
+        background: rgba(239, 68, 68, 0.1);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 4px 12px;
+        border-radius: 99px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .blacklist-tag button {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        display: flex;
+        padding: 2px;
+      }
+
+      /* Groups List */
+      .scroll-area {
+        height: 400px;
+        overflow-y: auto;
+        padding-right: 8px;
+      }
+
+      .scroll-area::-webkit-scrollbar {
+        width: 6px;
+      }
+      .scroll-area::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .scroll-area::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+
+      .group-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
         margin-bottom: 10px;
+        transition: all 0.2s;
+      }
+
+      .group-item:hover {
+        background: rgba(255, 255, 255, 0.06);
+        transform: translateX(4px);
+      }
+
+      .group-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .group-avatar {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .group-name {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      /* Switch Toggle */
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #334155;
+        transition: 0.4s;
+        border-radius: 24px;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+
+      input:checked + .slider {
+        background-color: var(--success);
+      }
+      input:checked + .slider:before {
+        transform: translateX(20px);
+      }
+
+      /* Filters */
+      .filter-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .filter-card b {
+        display: block;
+        margin-bottom: 12px;
+        color: var(--primary);
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .filter-card input {
+        margin-bottom: 8px;
+        width: 100%;
+      }
+
+      /* Action Button */
+      .action-panel {
+        margin-top: 24px;
+      }
+
+      .btn-main {
+        width: 100%;
+        padding: 18px;
+        border-radius: 16px;
+        border: none;
+        background: var(--primary);
+        color: white;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 136, 204, 0.4);
+      }
+
+      .btn-main:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px -5px rgba(0, 136, 204, 0.5);
+      }
+
+      .btn-main:active {
+        transform: translateY(0);
+      }
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .empty-state,
+      .loading-spinner,
+      .error-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+        font-size: 14px;
       }
     </style>
   </head>
-
   <body>
     <div class="container">
-      <div class="panel header">
-        <h2>Telegram Radar</h2>
+      <header>
+        <div class="logo-group">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.11.02-1.93 1.23-5.46 3.62-.51.35-.98.52-1.4.51-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.48.99-.74 3.89-1.69 6.48-2.8 7.78-3.33 3.69-1.52 4.45-1.78 4.95-1.79.11 0 .36.03.52.16.13.1.17.24.19.34.02.07.02.21.01.27z"
+              />
+            </svg>
+          </div>
+          <h2>Telegram Radar</h2>
+        </div>
+        <div class="user-actions">
+          <div id="user">
+            <div class="user-badge">Verificando login...</div>
+          </div>
+          <button id="logoutBtn" class="btn-logout" type="button">Sair</button>
+        </div>
+      </header>
 
-        <div id="user">verificando login...</div>
-      </div>
+      <div class="dashboard-grid">
+        <!-- Coluna da Esquerda: Grupos -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Grupos do Telegram</h3>
+          </div>
 
-      <div class="grid">
-        <div class="panel">
-          <h3>Grupos</h3>
-
-          <div class="blacklist">
-            <div class="blacklist-row">
+          <div class="blacklist-area">
+            <div class="blacklist-controls">
               <input
                 id="blacklistInput"
-                placeholder="bloquear grupos com este nome"
+                placeholder="Bloquear grupos por nome..."
               />
-              <button id="addBlacklistBtn" class="blacklist-btn" type="button">
-                Bloquear
-              </button>
+              <button id="addBlacklistBtn" class="btn-add">Bloquear</button>
             </div>
-
-            <div id="blacklistTags" class="blacklist-tags"></div>
+            <div id="blacklistTags" class="blacklist-tags">
+              <!-- Tags serão inseridas aqui -->
+            </div>
           </div>
 
-          <div id="groups" class="box">carregando grupos...</div>
+          <div id="groups" class="scroll-area">
+            <!-- Lista de grupos será inserida aqui -->
+            <div class="loading-spinner">Carregando grupos...</div>
+          </div>
         </div>
 
-        <div class="panel">
-          <h3>Filtros</h3>
+        <!-- Coluna da Direita: Filtros -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Filtros de Ofertas</h3>
+          </div>
 
-          <div id="filters" class="box">
-            <div class="filter">
-              <b>iphone 16</b>
-
-              <input placeholder="preco maximo" />
-
-              <input placeholder="cor" />
+          <div id="filters" class="scroll-area">
+            <div class="filter-card">
+              <b>iPhone 16</b>
+              <input placeholder="Preço máximo (R$)" />
+              <input placeholder="Cor preferida" />
             </div>
 
-            <div class="filter">
-              <b>celular</b>
+            <div class="filter-card">
+              <b>Celulares Android</b>
+              <input placeholder="RAM mínima (GB)" />
+              <input placeholder="Ano de lançamento" />
+            </div>
 
-              <input placeholder="ram minima" />
-
-              <input placeholder="ano minimo" />
+            <div class="filter-card">
+              <b>Placas de Vídeo</b>
+              <input placeholder="Modelo (RTX, RX...)" />
+              <input placeholder="Preço máximo" />
             </div>
           </div>
         </div>
       </div>
 
-      <div class="panel">
-        <button id="startScannerBtn" class="btn" type="button">
+      <div class="action-panel">
+        <button id="startScannerBtn" class="btn-main">
           Iniciar monitoramento
         </button>
       </div>

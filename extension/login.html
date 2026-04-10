@@ -1,175 +1,277 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login Telegram Radar</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Radar | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      :root {
-        color-scheme: dark;
-      }
+        :root {
+            --primary: #0088cc;
+            --primary-hover: #0077b5;
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --input-bg: rgba(15, 23, 42, 0.6);
+            --success: #10b981;
+            --error: #ef4444;
+            --info: #3b82f6;
+        }
 
-      body {
-        margin: 0;
-        min-height: 100vh;
-        background:
-          radial-gradient(
-            circle at 25% -10%,
-            #123066 0%,
-            rgba(18, 48, 102, 0) 45%
-          ),
-          radial-gradient(
-            circle at 95% 10%,
-            #0c5564 0%,
-            rgba(12, 85, 100, 0) 38%
-          ),
-          linear-gradient(155deg, #030711 10%, #02060f 50%, #030915 100%);
-        color: #e7f0ff;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
 
-      .wrap {
-        width: 100%;
-        max-width: 420px;
-        margin: 36px auto;
-        padding: 0 16px;
-        box-sizing: border-box;
-      }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(0, 136, 204, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(0, 136, 204, 0.1) 0px, transparent 50%);
+            color: var(--text-main);
+            padding: 20px;
+        }
 
-      main {
-        border-radius: 18px;
-        border: 1px solid #274271;
-        background: rgba(8, 19, 40, 0.92);
-        padding: 18px;
-        box-shadow: 0 14px 28px rgba(1, 7, 20, 0.5);
-      }
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            animation: fadeIn 0.6s ease-out;
+        }
 
-      h1 {
-        margin: 0;
-        font-size: 1.35rem;
-      }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-      .subtitle {
-        margin: 5px 0 14px;
-        color: #aac0e3;
-        font-size: 0.88rem;
-      }
+        .logo-area {
+            text-align: center;
+            margin-bottom: 32px;
+        }
 
-      .field {
-        margin-bottom: 10px;
-      }
+        .logo-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--primary);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 136, 204, 0.4);
+        }
 
-      label {
-        display: block;
-        margin-bottom: 5px;
-        color: #c1d4f0;
-        font-size: 0.82rem;
-      }
+        .logo-icon svg {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
 
-      input {
-        width: 100%;
-        box-sizing: border-box;
-        border-radius: 12px;
-        border: 1px solid #34527d;
-        background: rgba(22, 41, 72, 0.75);
-        color: #f0f7ff;
-        padding: 10px 11px;
-        outline: none;
-      }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 8px;
+        }
 
-      input:focus {
-        border-color: #67ddff;
-        box-shadow: 0 0 0 2px rgba(80, 214, 255, 0.2);
-      }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
 
-      .row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin-top: 6px;
-      }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
 
-      button {
-        border: 1px solid transparent;
-        border-radius: 12px;
-        padding: 10px;
-        font-weight: 600;
-        cursor: pointer;
-      }
+        .form-group {
+            margin-bottom: 20px;
+        }
 
-      button:disabled {
-        opacity: 0.58;
-        cursor: not-allowed;
-      }
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
 
-      #sendCodeBtn {
-        background: linear-gradient(135deg, #3dd7ff 0%, #52bcff 100%);
-        color: #042235;
-      }
+        input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 15px;
+            transition: all 0.2s;
+            outline: none;
+        }
 
-      #loginBtn {
-        background: linear-gradient(135deg, #33dea9 0%, #44e9be 100%);
-        color: #05261b;
-      }
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(0, 136, 204, 0.15);
+        }
 
-      .status {
-        margin-top: 12px;
-        border-radius: 12px;
-        border: 1px solid #2f4871;
-        background: rgba(15, 27, 50, 0.9);
-        color: #b8cae6;
-        padding: 10px;
-        font-size: 0.86rem;
-        min-height: 40px;
-      }
+        input::placeholder {
+            color: #475569;
+        }
 
-      .status.success {
-        border-color: #1f7b62;
-        background: #0d3228;
-        color: #9cf8d2;
-      }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
 
-      .status.error {
-        border-color: #8f2d3d;
-        background: #321019;
-        color: #ffb8c4;
-      }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
 
-      .status.info {
-        border-color: #2f5f8f;
-        background: #10283d;
-        color: #b0d7ff;
-      }
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .step {
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.4s ease;
+        }
+
+        .step.is-visible {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .status {
+            margin-top: 24px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            border: 1px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .status.info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #93c5fd;
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: #6ee7b7;
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
     </style>
-  </head>
-
-  <body>
-    <div class="wrap">
-      <main>
-        <h1>Login Telegram</h1>
-        <p class="subtitle">Envie o codigo e conecte sua conta.</p>
-
-        <div class="field">
-          <label for="phone">Telefone</label>
-          <input id="phone" placeholder="+55 83..." />
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-area">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.11.02-1.93 1.23-5.46 3.62-.51.35-.98.52-1.4.51-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.88.03-.24.36-.48.99-.74 3.89-1.69 6.48-2.8 7.78-3.33 3.69-1.52 4.45-1.78 4.95-1.79.11 0 .36.03.52.16.13.1.17.24.19.34.02.07.02.21.01.27z"/>
+                </svg>
+            </div>
+            <h1>Telegram Radar</h1>
+            <p class="subtitle">Acesse seu painel de ofertas</p>
         </div>
 
-        <div class="field">
-          <label for="code">Codigo</label>
-          <input id="code" placeholder="12345" />
+        <div class="card">
+            <div id="phoneStep">
+                <div class="form-group">
+                    <label for="phone">Número de Telefone</label>
+                    <input type="tel" id="phone" placeholder="+55 83 99999-9999" autocomplete="tel">
+                </div>
+                <button id="sendCodeBtn" class="btn btn-primary">
+                    Enviar código
+                </button>
+            </div>
+
+            <div id="codeStep" class="step">
+                <div class="form-group">
+                    <label for="code">Código de Verificação</label>
+                    <input type="text" id="code" placeholder="Digite o código" autocomplete="one-time-code">
+                </div>
+                <button id="loginBtn" class="btn btn-primary">
+                    Conectar Conta
+                </button>
+            </div>
+
+            <div id="status" class="status info">
+                Pronto para autenticar.
+            </div>
         </div>
 
-        <div class="row">
-          <button id="sendCodeBtn" type="button">Enviar codigo</button>
-          <button id="loginBtn" type="button">Conectar</button>
-        </div>
-
-        <div id="status" class="status" aria-live="polite">
-          Pronto para autenticar.
-        </div>
-      </main>
+        <footer>
+            &copy; 2026 Telegram Radar. Todos os direitos reservados.
+        </footer>
     </div>
 
     <script src="login.js"></script>
-  </body>
+</body>
 </html>

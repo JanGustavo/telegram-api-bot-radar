@@ -1,14 +1,31 @@
-function openLogin() {
+function openTab(page) {
   chrome.tabs.create({
-    url: chrome.runtime.getURL("login.html"),
+    url: chrome.runtime.getURL(page),
   });
 }
 
-function openPanel() {
-  chrome.tabs.create({
-    url: chrome.runtime.getURL("dashboard.html"),
+function getAuthSession() {
+  return new Promise((resolve) => {
+    if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
+      resolve(null);
+      return;
+    }
+
+    chrome.storage.local.get(["telegramAuth"], (result) => {
+      resolve(result?.telegramAuth || null);
+    });
   });
 }
 
-document.getElementById("openLogin").addEventListener("click", openLogin);
+async function openPanel() {
+  const authSession = await getAuthSession();
+
+  if (authSession?.logged) {
+    openTab("dashboard.html");
+    return;
+  }
+
+  openTab("login.html");
+}
+
 document.getElementById("openPanel").addEventListener("click", openPanel);
