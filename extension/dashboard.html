@@ -52,9 +52,9 @@
       }
 
       .container {
-        max-width: 1100px;
+        max-width: 1200px;
         margin: 0 auto;
-        animation: fadeIn 0.6s ease-out;
+        animation: fadeIn 0.5s ease-out;
       }
 
       @keyframes fadeIn {
@@ -68,12 +68,13 @@
         }
       }
 
+      /* Header */
       header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 32px;
-        padding: 20px 24px;
+        margin-bottom: 28px;
+        padding: 18px 24px;
         background: var(--card-bg);
         backdrop-filter: blur(12px);
         border: 1px solid var(--border-color);
@@ -85,7 +86,6 @@
         align-items: center;
         gap: 12px;
       }
-
       .logo-icon {
         width: 40px;
         height: 40px;
@@ -95,19 +95,22 @@
         align-items: center;
         justify-content: center;
       }
-
       .logo-icon svg {
         width: 24px;
         height: 24px;
         fill: white;
       }
-
       h2 {
         font-size: 20px;
         font-weight: 700;
         letter-spacing: -0.025em;
       }
 
+      .user-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
       .user-badge {
         display: flex;
         align-items: center;
@@ -119,11 +122,14 @@
         font-weight: 500;
         border: 1px solid var(--border-color);
       }
-
-      .user-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .status-dot.online {
+        background: var(--success);
+        box-shadow: 0 0 8px var(--success);
       }
 
       .btn-logout {
@@ -137,39 +143,30 @@
         cursor: pointer;
         transition: all 0.2s;
       }
-
       .btn-logout:hover {
         background: rgba(239, 68, 68, 0.18);
         border-color: rgba(239, 68, 68, 0.45);
-        transform: translateY(-1px);
       }
-
       .btn-logout:disabled {
         opacity: 0.6;
         cursor: not-allowed;
-        transform: none;
       }
 
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-      }
-
-      .status-dot.online {
-        background: var(--success);
-        box-shadow: 0 0 8px var(--success);
-      }
-
-      .dashboard-grid {
+      /* Grid principal — 3 colunas */
+      .main-grid {
         display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 24px;
-        margin-bottom: 24px;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
       }
 
-      @media (max-width: 900px) {
-        .dashboard-grid {
+      @media (max-width: 1024px) {
+        .main-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 640px) {
+        .main-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -179,7 +176,7 @@
         backdrop-filter: blur(12px);
         border: 1px solid var(--border-color);
         border-radius: 24px;
-        padding: 24px;
+        padding: 22px;
         display: flex;
         flex-direction: column;
       }
@@ -188,155 +185,149 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
       }
 
       h3 {
-        font-size: 18px;
+        font-size: 17px;
         font-weight: 600;
-        color: var(--text-main);
       }
 
-      /* Blacklist Styles */
-      .blacklist-controls {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 16px;
-      }
-
-      input {
-        flex: 1;
-        background: var(--input-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 10px 16px;
-        color: white;
-        font-size: 14px;
-        outline: none;
-        transition: all 0.2s;
-      }
-
-      input:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(0, 136, 204, 0.1);
-      }
-
-      .btn-add {
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 0 20px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-
-      .btn-add:hover {
-        background: var(--primary-hover);
-      }
-
-      .blacklist-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 20px;
-        min-height: 32px;
-      }
-
-      .blacklist-tag {
-        background: rgba(239, 68, 68, 0.1);
-        color: #fca5a5;
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        padding: 4px 12px;
-        border-radius: 99px;
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .blacklist-tag button {
-        background: none;
-        border: none;
-        color: inherit;
-        cursor: pointer;
-        display: flex;
-        padding: 2px;
-      }
-
-      /* Groups List */
+      /* Scroll area */
       .scroll-area {
-        height: 400px;
+        flex: 1;
         overflow-y: auto;
-        padding-right: 8px;
+        max-height: 420px;
+        padding-right: 6px;
       }
-
       .scroll-area::-webkit-scrollbar {
-        width: 6px;
-      }
-      .scroll-area::-webkit-scrollbar-track {
-        background: transparent;
+        width: 4px;
       }
       .scroll-area::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.1);
         border-radius: 10px;
       }
 
+      /* Grupos */
+      .filter-banner {
+        background: rgba(251, 191, 36, 0.08);
+        border: 1px solid rgba(251, 191, 36, 0.2);
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 12px;
+        color: #fde68a;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .show-filtered-label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .show-filtered-label input {
+        width: auto;
+        margin: 0;
+      }
+
       .group-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 12px;
+        padding: 10px 12px;
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid var(--border-color);
-        border-radius: 16px;
-        margin-bottom: 10px;
+        border-radius: 14px;
+        margin-bottom: 8px;
         transition: all 0.2s;
       }
-
       .group-item:hover {
         background: rgba(255, 255, 255, 0.06);
-        transform: translateX(4px);
+        transform: translateX(3px);
+      }
+      .group-item.group-filtered {
+        opacity: 0.45;
       }
 
       .group-info {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
       }
-
       .group-avatar {
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
         background: linear-gradient(135deg, #3b82f6, #1d4ed8);
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 13px;
+      }
+      .group-avatar.avatar-filtered {
+        background: rgba(100, 100, 100, 0.3);
+      }
+      .group-name {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .filter-badge {
+        font-size: 10px;
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 1px 7px;
+        border-radius: 99px;
+        margin-left: 6px;
       }
 
-      .group-name {
-        font-size: 14px;
+      .alert-group-link {
+        color: #4ea1ff;
+        text-decoration: none;
         font-weight: 500;
       }
 
-      /* Switch Toggle */
+      .alert-group-link:hover {
+        text-decoration: underline;
+        color: #7bbcff;
+      }
+
+      .group-name.link::after {
+        content: " ↗";
+        font-size: 12px;
+        opacity: 0.6;
+      }
+
+      .group-name.link {
+        color: #4da6ff;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+      }
+
+      .group-name.link:hover {
+        text-decoration: underline;
+        color: #82c4ff;
+      }
+
+      /* Switch */
       .switch {
         position: relative;
         display: inline-block;
-        width: 44px;
-        height: 24px;
+        width: 40px;
+        height: 22px;
       }
-
       .switch input {
         opacity: 0;
         width: 0;
         height: 0;
       }
-
       .slider {
         position: absolute;
         cursor: pointer;
@@ -344,113 +335,296 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: #334155;
-        transition: 0.4s;
-        border-radius: 24px;
+        background: #334155;
+        transition: 0.3s;
+        border-radius: 22px;
       }
-
       .slider:before {
         position: absolute;
         content: "";
-        height: 18px;
-        width: 18px;
+        height: 16px;
+        width: 16px;
         left: 3px;
         bottom: 3px;
-        background-color: white;
-        transition: 0.4s;
+        background: white;
+        transition: 0.3s;
         border-radius: 50%;
       }
-
       input:checked + .slider {
-        background-color: var(--success);
+        background: var(--success);
       }
       input:checked + .slider:before {
-        transform: translateX(20px);
+        transform: translateX(18px);
+      }
+      .switch-disabled .slider {
+        cursor: not-allowed;
+        background: #1e293b;
       }
 
-      /* Filters */
-      .filter-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 16px;
+      /* ----- Painel de Níveis ----- */
+      .level-selector {
+        display: flex;
+        gap: 6px;
         margin-bottom: 16px;
       }
-
-      .filter-card b {
-        display: block;
-        margin-bottom: 12px;
-        color: var(--primary);
-        font-size: 14px;
+      .level-btn {
+        flex: 1;
+        padding: 8px 6px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+      }
+      .level-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-main);
+      }
+      .level-btn.active {
+        background: rgba(0, 136, 204, 0.2);
+        border-color: var(--primary);
+        color: #93c5fd;
+      }
+      .level-label {
+        font-size: 11px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-
-      .filter-card input {
+        letter-spacing: 0.06em;
+        color: var(--primary);
         margin-bottom: 8px;
+        display: block;
+      }
+      .level-desc {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+
+      /* Inputs */
+      input,
+      textarea {
         width: 100%;
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 9px 14px;
+        color: white;
+        font-size: 13px;
+        outline: none;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+      input:focus,
+      textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 136, 204, 0.12);
+      }
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      .input-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin: 10px 0 4px;
+        display: block;
       }
 
-      /* Action Button */
+      /* ----- Área de teste de oferta ----- */
+      .offer-test-area {
+        margin-top: 16px;
+      }
+      #offerTestResult {
+        margin-top: 8px;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-height: 36px;
+      }
+      .test-pass {
+        color: var(--success);
+        font-weight: 600;
+      }
+      .test-fail {
+        color: var(--error);
+        font-weight: 600;
+      }
+      .test-meta {
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+
+      /* ----- Alertas ----- */
+      .alert-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+      }
+      .alert-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .alert-group {
+        font-size: 12px;
+        font-weight: 600;
+        color: #93c5fd;
+      }
+      .alert-price {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--success);
+      }
+      .alert-text {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-bottom: 6px;
+      }
+      .alert-meta {
+        display: flex;
+        gap: 8px;
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.6);
+        flex-wrap: wrap;
+      }
+      .alert-meta span::before {
+        content: "· ";
+      }
+      .alert-meta span:first-child::before {
+        content: "";
+      }
+
+      .btn-small {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-small:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-main);
+      }
+
+      /* Botão principal */
       .action-panel {
-        margin-top: 24px;
+        margin-top: 0;
       }
-
       .btn-main {
         width: 100%;
-        padding: 18px;
+        padding: 16px;
         border-radius: 16px;
         border: none;
         background: var(--primary);
         color: white;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         cursor: pointer;
         transition: all 0.3s;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        box-shadow: 0 10px 25px -5px rgba(0, 136, 204, 0.4);
+        gap: 10px;
+        box-shadow: 0 10px 25px -5px rgba(0, 136, 204, 0.35);
       }
-
       .btn-main:hover {
         background: var(--primary-hover);
         transform: translateY(-2px);
-        box-shadow: 0 15px 30px -5px rgba(0, 136, 204, 0.5);
       }
-
       .btn-main:active {
         transform: translateY(0);
       }
-
-      .spinner {
-        width: 20px;
-        height: 20px;
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: spin 0.8s linear infinite;
+      .btn-main:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
       }
 
+      /* Bottom row */
+      .bottom-row {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 860px) {
+        .bottom-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* States */
+      .empty-state,
+      .loading-spinner,
+      .error-state {
+        text-align: center;
+        padding: 36px 20px;
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+      .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.7s linear infinite;
+      }
       @keyframes spin {
         to {
           transform: rotate(360deg);
         }
       }
 
-      .empty-state,
-      .loading-spinner,
-      .error-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: var(--text-muted);
+      /* Toast */
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 22px;
+        border-radius: 12px;
         font-size: 14px;
+        font-weight: 500;
+        animation: fadeIn 0.3s ease;
+        z-index: 9999;
+      }
+      .toast-info {
+        background: #1e40af;
+        color: white;
+      }
+      .toast-warning {
+        background: #92400e;
+        color: #fde68a;
+      }
+      .toast-error {
+        background: #7f1d1d;
+        color: #fecaca;
+      }
+      .toast-success {
+        background: #064e3b;
+        color: #6ee7b7;
       }
     </style>
   </head>
   <body>
     <div class="container">
+      <!-- Header -->
       <header>
         <div class="logo-group">
           <div class="logo-icon">
@@ -463,74 +637,139 @@
           <h2>Telegram Radar</h2>
         </div>
         <div class="user-actions">
-          <div id="user">
-            <div class="user-badge">Verificando login...</div>
-          </div>
-          <button id="logoutBtn" class="btn-logout" type="button">Sair</button>
+          <div id="user"><div class="user-badge">Verificando...</div></div>
+          <button id="logoutBtn" class="btn-logout">Sair</button>
         </div>
       </header>
 
-      <div class="dashboard-grid">
-        <!-- Coluna da Esquerda: Grupos -->
+      <!-- Grid principal: Grupos | Nível | Teste de Oferta -->
+      <div class="main-grid">
+        <!-- 1. Grupos com filtro automático -->
         <div class="card">
           <div class="card-header">
-            <h3>Grupos do Telegram</h3>
+            <h3>📡 Grupos</h3>
           </div>
-
-          <div class="blacklist-area">
-            <div class="blacklist-controls">
-              <input
-                id="blacklistInput"
-                placeholder="Bloquear grupos por nome..."
-              />
-              <button id="addBlacklistBtn" class="btn-add">Bloquear</button>
-            </div>
-            <div id="blacklistTags" class="blacklist-tags">
-              <!-- Tags serão inseridas aqui -->
-            </div>
-          </div>
-
           <div id="groups" class="scroll-area">
-            <!-- Lista de grupos será inserida aqui -->
-            <div class="loading-spinner">Carregando grupos...</div>
+            <div class="loading-spinner">
+              <div class="spinner"></div>
+              Carregando...
+            </div>
           </div>
         </div>
 
-        <!-- Coluna da Direita: Filtros -->
+        <!-- 2. Nível de monitoramento -->
         <div class="card">
           <div class="card-header">
-            <h3>Filtros de Ofertas</h3>
+            <h3>🎯 Nível de Busca</h3>
           </div>
 
-          <div id="filters" class="scroll-area">
-            <div class="filter-card">
-              <b>iPhone 16</b>
-              <input placeholder="Preço máximo (R$)" />
-              <input placeholder="Cor preferida" />
-            </div>
+          <div class="level-selector">
+            <button class="level-btn" data-level="broad">🌐<br />Amplo</button>
+            <button class="level-btn" data-level="mid">🏷️<br />Marcas</button>
+            <button class="level-btn active" data-level="specific">
+              🔍<br />Modelos
+            </button>
+          </div>
 
-            <div class="filter-card">
-              <b>Celulares Android</b>
-              <input placeholder="RAM mínima (GB)" />
-              <input placeholder="Ano de lançamento" />
-            </div>
+          <!-- Painel: AMPLO -->
+          <div id="panel-broad" style="display: none">
+            <span class="level-label">Amplo — todos os celulares</span>
+            <p class="level-desc">
+              Monitora qualquer mensagem com palavras como
+              <em>iphone, samsung, celular, galaxy…</em>
+              Ideal para não perder nenhuma oferta.
+            </p>
+            <label class="input-label"
+              >Keywords extras (separadas por vírgula)</label
+            >
+            <input
+              id="broadKeywordsInput"
+              placeholder="tablet, notebook, fone…"
+            />
+          </div>
 
-            <div class="filter-card">
-              <b>Placas de Vídeo</b>
-              <input placeholder="Modelo (RTX, RX...)" />
-              <input placeholder="Preço máximo" />
+          <!-- Painel: MÉDIO -->
+          <div id="panel-mid" style="display: none">
+            <span class="level-label">Marcas/Linhas específicas</span>
+            <p class="level-desc">
+              Monitora apenas linhas como
+              <em>Galaxy S, iPhone 15+, Motorola Edge, POCO F…</em>
+            </p>
+            <label class="input-label"
+              >Marcas/linhas (separadas por vírgula)</label
+            >
+            <input
+              id="midBrandsInput"
+              placeholder="Galaxy S, iPhone 15, Motorola Edge…"
+            />
+          </div>
+
+          <!-- Painel: ESPECÍFICO -->
+          <div id="panel-specific">
+            <span class="level-label">Modelos exatos (regex)</span>
+            <p class="level-desc">
+              Um modelo por linha. Suporta regex:<br />
+              <code style="font-size: 11px; color: #93c5fd"
+                >galaxy s2[34] ultra</code
+              ><br />
+              <code style="font-size: 11px; color: #93c5fd"
+                >iphone 15 pro max</code
+              >
+            </p>
+            <textarea
+              id="specificModelsInput"
+              placeholder="galaxy s24 ultra&#10;iphone 15 pro max&#10;poco x6 pro"
+            ></textarea>
+          </div>
+
+          <label class="input-label">Preço máximo (R$) — opcional</label>
+          <input id="priceMaxInput" type="number" placeholder="ex: 3500" />
+
+          <!-- Teste de oferta -->
+          <div class="offer-test-area">
+            <label class="input-label">🧪 Testar texto de oferta</label>
+            <input
+              id="offerTestInput"
+              placeholder="Cole aqui uma mensagem do grupo…"
+            />
+            <div id="offerTestResult"></div>
+          </div>
+        </div>
+
+        <!-- 3. Alertas capturados -->
+        <div class="card">
+          <div class="card-header">
+            <h3>🔔 Alertas</h3>
+            <button id="clearAlertsBtn" class="btn-small">Limpar</button>
+          </div>
+          <div id="alertsList" class="scroll-area">
+            <div class="empty-state">
+              Nenhum alerta ainda.<br />Inicie o monitoramento.
             </div>
           </div>
         </div>
       </div>
 
+      <!-- Botão de iniciar -->
       <div class="action-panel">
         <button id="startScannerBtn" class="btn-main">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="4" fill="currentColor" />
+          </svg>
           Iniciar monitoramento
         </button>
       </div>
     </div>
-
     <script src="dashboard.js"></script>
   </body>
 </html>
