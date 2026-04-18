@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Telegram Radar | Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="telegram_logo.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -191,6 +192,58 @@
       h3 {
         font-size: 17px;
         font-weight: 600;
+      }
+
+      /* ----- Grid de Categorias (Cards) ----- */
+      .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .cat-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--text-muted);
+        opacity: 0.6;
+        filter: grayscale(100%);
+      }
+
+      .cat-card:hover {
+        background: rgba(255, 255, 255, 0.06);
+        opacity: 0.8;
+      }
+
+      /* Estado Ativado (Acende) */
+      .cat-card.active {
+        background: rgba(0, 136, 204, 0.15); /* Fundo com a cor primary */
+        border-color: var(--primary);
+        color: var(--text-main);
+        opacity: 1;
+        filter: grayscale(0%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 136, 204, 0.2);
+      }
+
+      .cat-icon {
+        font-size: 24px;
+        display: block;
+      }
+
+      .cat-name {
+        font-size: 11px;
+        font-weight: 600;
+        text-align: center;
       }
 
       /* Scroll area */
@@ -673,18 +726,45 @@
 
           <!-- Painel: AMPLO -->
           <div id="panel-broad" style="display: none">
-            <span class="level-label">Amplo — todos os celulares</span>
+            <span class="level-label">Categorias de Interesse</span>
             <p class="level-desc">
-              Monitora qualquer mensagem com palavras como
-              <em>iphone, samsung, celular, galaxy…</em>
-              Ideal para não perder nenhuma oferta.
+              Selecione os nichos que deseja monitorar. O radar buscará as
+              melhores ofertas automaticamente.
             </p>
-            <label class="input-label"
-              >Keywords extras (separadas por vírgula)</label
+
+            <div class="category-grid">
+              <button class="cat-card active" data-category="celulares">
+                <span class="cat-icon">📱</span>
+                <span class="cat-name">Celulares</span>
+              </button>
+              <button class="cat-card" data-category="tvs">
+                <span class="cat-icon">📺</span>
+                <span class="cat-name">TVs & Smart</span>
+              </button>
+              <button class="cat-card" data-category="audio">
+                <span class="cat-icon">🎧</span>
+                <span class="cat-name">Áudio</span>
+              </button>
+              <button class="cat-card" data-category="higiene">
+                <span class="cat-icon">🧼</span>
+                <span class="cat-name">Higiene</span>
+              </button>
+              <button class="cat-card" data-category="informatica">
+                <span class="cat-icon">💻</span>
+                <span class="cat-name">Informática</span>
+              </button>
+              <button class="cat-card" data-category="casa">
+                <span class="cat-icon">🏠</span>
+                <span class="cat-name">Casa</span>
+              </button>
+            </div>
+
+            <label class="input-label" style="margin-top: 16px"
+              >Palavras-chave extras (opcional)</label
             >
             <input
               id="broadKeywordsInput"
-              placeholder="tablet, notebook, fone…"
+              placeholder="Ex: air fryer, pneu, fralda…"
             />
           </div>
 

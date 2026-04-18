@@ -1,12 +1,24 @@
 {
-	"manifest_version": 3,
-	"name": "Telegram Radar",
-	"version": "1.0.0",
-	"description": "Extensão para autenticar e abrir o painel do Telegram Radar.",
-	"action": {
-		"default_title": "Telegram Radar",
-		"default_popup": "popup.html"
-	},
-	"permissions": ["storage", "tabs"],
-	"host_permissions": ["http://localhost:8000/*"]
+   "manifest_version": 3,
+   "name": "Telegram Radar",
+   "version": "1.0.0",
+   "description": "Extensão para autenticar e abrir o painel do Telegram Radar.",
+   "action": {
+	   "default_title": "Telegram Radar",
+	   "default_popup": "popup.html",
+	   "default_icon": {
+		   "16": "telegram_logo.svg",
+		   "32": "telegram_logo.svg",
+		   "48": "telegram_logo.svg",
+		   "128": "telegram_logo.svg"
+	   }
+   },
+   "icons": {
+	   "16": "telegram_logo.svg",
+	   "32": "telegram_logo.svg",
+	   "48": "telegram_logo.svg",
+	   "128": "telegram_logo.svg"
+   },
+   "permissions": ["storage", "tabs"],
+   "host_permissions": ["http://localhost:8000/*"]
 }

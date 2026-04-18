@@ -54,8 +54,8 @@ except (TypeError, ValueError) as error:
 
 GROUP_QUALITY_BLOCKLIST: list[re.Pattern] = [re.compile(p, re.IGNORECASE) for p in [
     # ---- Série numerada / canais clones ----
-    r"\b(v|grupo|group|canal|sala|room|chat)\s*\d{1,3}$",  # "Group 1", "V4", "Sala 3"
-    r"_(q|p|m|a|ww|qq)\d{1,3}$",                           # _Q9, _P63, _ww1, _QQ1
+    r"\b(v|grupo|group|canal|sala|room|chat)\s*\d{1,3}$",
+    r"_(q|p|m|a|ww|qq)\d{1,3}$",
     r"-canal\s+oficial",
     r"canal\s+oficial",
     r"\boficial_",
@@ -63,7 +63,7 @@ GROUP_QUALITY_BLOCKLIST: list[re.Pattern] = [re.compile(p, re.IGNORECASE) for p 
     # ---- Códigos alfanuméricos de esquemas (KK76, P933, 688XT…) ----
     r"^[a-z0-9]{4,6}\s+(brasil|oficial|club)",
     r"\b(kk76|p933|688xt|kkn)\b",
-    r"^[A-Z]{2,4}\d{1,3}$",                                # KKN11, BH, BB
+    r"^[A-Z]{2,4}\d{1,3}$",
 
     # ---- Trading / signals / quant / financeiro suspeito ----
     r"\bquant(um)?\b",
@@ -99,7 +99,7 @@ GROUP_QUALITY_BLOCKLIST: list[re.Pattern] = [re.compile(p, re.IGNORECASE) for p 
 
     # ---- Bot farms numerados ----
     r"^\d{1,3}\s+gruh$",
-    r"^\d{2,4}$",                                          # "22", "2022"
+    r"^\d{2,4}$",
 
     # ---- Links no nome ----
     r"https?://",
@@ -131,49 +131,36 @@ GROUP_QUALITY_BLOCKLIST: list[re.Pattern] = [re.compile(p, re.IGNORECASE) for p 
     r"\bfree\s*money\b",
 
     # ---- Scripts não-PT/EN em massa ----
-    r"[\u0600-\u06FF\u0750-\u077F]{3,}",                   # árabe / persa
-    r"[\u0400-\u04FF]{4,}",                                 # cirílico
-    r"[\u4E00-\u9FFF]{2,}",                                 # chinês
+    r"[\u0600-\u06FF\u0750-\u077F]{3,}",
+    r"[\u0400-\u04FF]{4,}",
+    r"[\u4E00-\u9FFF]{2,}",
 ]]
 
 
 def _is_spam_name(title: str) -> bool:
-    """
-    Heurística para nomes gerados aleatoriamente / keyboard mashing.
-    Exemplos que detecta: sdfccdsfgfd, gsgffyr, sdadad, asfdaasfa, efdggerg.
-    Só atua em nomes SEM espaço (nomes com espaço têm contexto semântico).
-    """
     if " " in title.strip():
         return False
     clean = re.sub(r"[^a-zA-Z]", "", title)
     if not clean:
         return False
     if len(clean) < 4:
-        return True  # curto e sem sentido
+        return True
     t = clean.lower()
     vowels = sum(1 for c in t if c in "aeiou")
     ratio = vowels / len(t)
 
-    # Poucas vogais (< 30%)
     if ratio < 0.30:
         return True
-    # Padrão de repetição de segmento: sdadad, aswfesfeesfes
     if re.search(r"(.{2,4})\1", t):
         return True
-    # Cluster de 4+ consoantes seguidas: sdfcc, ndfw
     if re.search(r"[^aeiou]{4,}", t):
         return True
-    # 7+ chars com cluster de 3 consoantes e < 45% vogais: asfdaasfa, efsfegrgw
     if len(t) >= 7 and ratio < 0.45 and re.search(r"[^aeiou]{3,}", t):
         return True
     return False
 
 
 def group_passes_quality_filter(title: str) -> bool:
-    """
-    Retorna True se o grupo passa no filtro automático de qualidade.
-    False = grupo bloqueado (bot, spam, scheme, clone numerado etc.)
-    """
     for pattern in GROUP_QUALITY_BLOCKLIST:
         if pattern.search(title):
             return False
@@ -184,31 +171,100 @@ def group_passes_quality_filter(title: str) -> bool:
 
 # ---------------------------------------------------------------------------
 # Sistema de Níveis de Monitoramento
-#
-# Nível 1 — AMPLO   : qualquer celular / eletrônico, palavras genéricas
-# Nível 2 — MÉDIO   : marcas/linhas específicas (ex: Galaxy S, iPhone 15)
-# Nível 3 — PRECISO : modelos exatos com regex (ex: S24 Ultra, iPhone 15 Pro Max)
 # ---------------------------------------------------------------------------
 
 WATCH_CONFIG: dict = {
     "level": "broad",  # "broad" | "mid" | "specific"
-    "specific_models": [],   # lista de strings regex definidas pelo usuário
-    "mid_brands": [],        # lista de strings para match de marca
-    "broad_keywords": [],    # extra keywords além das defaults
-    "price_max": None,       # float ou None
+    "active_categories": ["celulares"], # <-- (FIX 1) Agora a API sabe por padrão qual buscar
+    "specific_models": [],   
+    "mid_brands": [],        
+    "broad_keywords": [],    
+    "price_max": None,       
     "min_score": 2,
     "relaxed_mode": False,
-    "require_offer_match": True,  # novo campo: se False, ignora score/min_score
-    "self_monitor": True,  # novo campo: se True, monitora mensagens do próprio usuário (Saved Messages)
+    "require_offer_match": True,  
+    "self_monitor": True,  
 }
 
-# Keywords default por nível
-_BROAD_DEFAULTS = [
-    r"\bcelular\b", r"\bsmartphone\b", r"\biphone\b",
-    r"\bsamsung\b", r"\bxiaomi\b", r"\bmotorola\b",
-    r"\bapple\b", r"\bandroid\b", r"\bphablet\b",
-    r"\bgalaxy\b", r"\bredmi\b", r"\bpoco\b",
-]
+CATEGORY_RULES = {
+    "celulares": {
+        "strong_keywords": [r"\bcelular(es)?\b", r"\bsmartphone(s)?\b", r"\biphone\b", r"\bgalaxy\b", r"\bpoco\b", r"\bredmi\b"],
+        "ambiguous_brands": [r"\bsamsung\b", r"\bmotorola\b", r"\bxiaomi\b", r"\blg\b", r"\basus\b", r"\bapple\b"],
+        "context_modifiers": [r"\b[a-z]\d{2,3}\b", r"\bedge\b", r"\bnote\b", r"\bpro\b", r"\bultra\b"], 
+        "exclude": [r"\btab\b", r"\btablet\b", r"\bwatch\b", r"\bbook\b", r"\bfone\b", r"\bbuds\b", r"\bmacbook\b", r"\btv\b", r"\bcapa(s)?\b", r"\bcase(s)?\b", r"\bpel[ií]cula(s)?\b"]
+    },
+    "tvs": {
+        "strong_keywords": [r"\btv(s)?\b", r"\bsmart\s?tv\b", r"\bsmartv\b", r"\btelevis[aã]o\b"],
+        "ambiguous_brands": [r"\bsamsung\b", r"\blg\b", r"\bphilips\b", r"\btcl\b", r"\baoc\b"],
+        "context_modifiers": [r"\b\d{2}\s?(polegadas|pol|\"|'')\b", r"\b4k\b", r"\b8k\b", r"\boled\b", r"\bqled\b"],
+        "exclude": [r"\bmonitor\b", r"\bcelular\b", r"\bsmartphone\b"]
+    },
+    "audio": {
+        "strong_keywords": [r"\bfone(s)?\b", r"\bheadset\b", r"\bearbuds\b", r"\bairpods\b"],
+        "ambiguous_brands": [r"\bjbl\b", r"\bsony\b", r"\bedifier\b", r"\bapple\b", r"\bsamsung\b"],
+        "context_modifiers": [r"\bbluetooth\b", r"\bsem\s*fio\b", r"\banc\b", r"\bnoise\s*cancelling\b"],
+        "exclude": [r"\bcaixa\s*vazia\b", r"\bcapa\b", r"\bcase\b"]
+    },
+    "higiene": {
+        "strong_keywords": [r"\bshampoo\b", r"\bdesodorante\b", r"\bpast[aã]o\b", r"\bgillette\b", r"\bsabonete\b", r"\bfralda\b", r"\bpampers\b"],
+        "ambiguous_brands": [r"\bdove\b", r"\bl[oó]re[aá]l\b", r"\bnivea\b", r"\brexona\b"],
+        "context_modifiers": [r"\bml\b", r"\bunidades\b", r"\bkit\b", r"\bpack\b"],
+        "exclude": []
+    },
+    "informatica": {
+        "strong_keywords": [r"\bnotebook(s)?\b", r"\blaptop(s)?\b", r"\bmacbook\b", r"\bpc\s+gamer\b", r"\bplaca\s+de\s+v[ií]deo\b", r"\brtx\b", r"\brx\b"],
+        "ambiguous_brands": [r"\bdell\b", r"\blenovo\b", r"\bacer\b", r"\bavell\b", r"\basus\b"],
+        "context_modifiers": [r"\bram\b", r"\bgb\b", r"\btb\b", r"\bintel\b", r"\bryzen\b"],
+        "exclude": [r"\bcabo\b", r"\badaptador\b"]
+    },
+    "casa": {
+        "strong_keywords": [r"\bair\s?fryer\b", r"\bmicro-ondas\b", r"\bgeladeira\b", r"\bliquidificador\b", r"\baspirador\b"],
+        "ambiguous_brands": [r"\bmondial\b", r"\belectrolux\b", r"\bphilco\b", r"\boster\b"],
+        "context_modifiers": [r"\blitros\b", r"\bw\b", r"\bwatts\b", r"\bvolts\b", r"\b110v\b", r"\b220v\b"],
+        "exclude": [r"\bpe[çc]a\b", r"\bconserto\b"]
+    }
+}
+
+def _remove_accents(text: str) -> str:
+    """Remove acentos para facilitar o match de regex."""
+    import unicodedata
+    return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8')
+
+def _validate_category(text: str, category: str) -> bool:
+    """Validador contextual com logs imunes a sobreposição."""
+    rules = CATEGORY_RULES.get(category)
+    if not rules:
+        return False
+        
+    print(f"\n[🔍 ANALISANDO CATEGORIA: {category.upper()}]", flush=True)
+    
+    # Remove acentos do texto para o validador não escorregar
+    t_clean = _remove_accents(text.lower())
+        
+    # 0. Caiu na exclusão?
+    for exc in rules.get("exclude", []):
+        if re.search(exc, t_clean):
+            print(f" ❌ BLOQUEADO: Contém exclusão '{exc}'", flush=True)
+            return False
+
+    # 1. Identificador Forte?
+    for kw in rules.get("strong_keywords", []):
+        if re.search(kw, t_clean):
+            print(f" ✅ APROVADO: Identificador forte '{kw}'", flush=True)
+            return True
+
+    # 2. Marca Ambígua precisa de contexto
+    for b in rules.get("ambiguous_brands", []):
+        if re.search(b, t_clean):
+            print(f" ⚠️ ATENÇÃO: Marca ambígua '{b}'. Buscando contexto...", flush=True)
+            for mod in rules.get("context_modifiers", []):
+                if re.search(mod, t_clean):
+                    print(f" ✅ APROVADO: Modificador '{mod}' validou '{b}'!", flush=True)
+                    return True
+            print(f" ❌ REJEITADO: Marca '{b}' sem contexto (falso positivo).", flush=True)
+
+    print(f" ➖ IGNORADO: Texto não pertence a {category.upper()}.", flush=True)
+    return False
 
 _MID_DEFAULTS = [
     r"galaxy\s*[as]\d{1,2}",
@@ -220,7 +276,6 @@ _MID_DEFAULTS = [
 
 # ---------------------------------------------------------------------------
 # Padrões de identificação de ofertas reais
-# Uma mensagem precisa bater em ≥2 categorias para ser considerada oferta.
 # ---------------------------------------------------------------------------
 
 OFFER_PATTERNS: dict[str, list[re.Pattern]] = {
@@ -231,7 +286,7 @@ OFFER_PATTERNS: dict[str, list[re.Pattern]] = {
         r"(preço|valor|custa|custando|saindo|sai)\s+(a\s+)?r\$",
         r"parcel(a|ado|amento)\s+em\s+\d+x",
         r"\d+x\s+(sem\s+juros|s\.j\.)",
-        r"\b\d{3,5}\b",  # números soltos tipo "4000"
+        r"\b\d{3,5}\b",
         r"\b\d{3,5}\s*reais\b",
         r"\bfa[cç]o\s+r\$?\s*\d+",
     ]],
@@ -282,7 +337,6 @@ OFFER_PATTERNS: dict[str, list[re.Pattern]] = {
     ]],
 }
 
-# Histórico de alertas disparados (em memória, sem persistência por enquanto)
 alert_history: list[dict] = []
 monitoring_active: bool = False
 monitoring_task: asyncio.Task | None = None
@@ -291,33 +345,58 @@ monitoring_task: asyncio.Task | None = None
 # Helpers de filtragem de mensagem
 # ---------------------------------------------------------------------------
 
+# <-- (FIX 2) Validador contextual estruturado
+
+# <-- (FIX 3) Novo _matches_level limpo e utilizando o validador
 def _matches_level(text: str, level: str) -> bool:
-    """Verifica se o texto bate no nível configurado."""
+    """Verifica se o texto bate no nível configurado, com Raio-X de Debug."""
     t = text.lower()
 
+    # --- RAIO-X: Mostra o que o Python acha que é a sua configuração ---
+    print(f"\n--- 🐛 DEBUG DE MENSAGEM ---", flush=True)
+    print(f"Nível ativo no Python: '{level}'", flush=True)
+    print(f"Categorias selecionadas: {WATCH_CONFIG.get('active_categories')}", flush=True)
+    
     if level == "broad":
-        patterns = _BROAD_DEFAULTS + [
-            rf"\b{re.escape(kw)}\b" for kw in WATCH_CONFIG.get("broad_keywords", [])
-        ]
-        return any(re.search(p, t) for p in patterns)
+        active_cats = WATCH_CONFIG.get("active_categories", [])
+        
+        if not active_cats:
+            print(" ⚠️ AVISO: Nenhuma categoria ativa no backend! Pulando validador.", flush=True)
+
+        for cat in active_cats:
+            if _validate_category(t, cat):
+                return True
+                
+        user_keywords = WATCH_CONFIG.get("broad_keywords", [])
+        if user_keywords:
+            print(f"Palavras extras do usuário: {user_keywords}", flush=True)
+            patterns = [rf"\b{re.escape(kw)}\b" for kw in user_keywords]
+            if any(re.search(p, t) for p in patterns):
+                print(" ✅ APROVADO: Bateu numa palavra extra digitada pelo usuário.", flush=True)
+                return True
+                
+        return False
 
     if level == "mid":
-        patterns = _MID_DEFAULTS + [
-            rf"\b{re.escape(b)}\b" for b in WATCH_CONFIG.get("mid_brands", [])
-        ]
-        return any(re.search(p, t, re.IGNORECASE) for p in patterns)
+        mid_brands = WATCH_CONFIG.get("mid_brands", [])
+        print(f"Marcas digitadas (Mid): {mid_brands}", flush=True)
+        patterns = _MID_DEFAULTS + [rf"\b{re.escape(b)}\b" for b in mid_brands]
+        if any(re.search(p, t, re.IGNORECASE) for p in patterns):
+            print(" ✅ APROVADO: Bateu na regra de Marcas (Nível Mid).", flush=True)
+            return True
 
     if level == "specific":
         models = WATCH_CONFIG.get("specific_models", [])
+        print(f"Modelos digitados (Specific): {models}", flush=True)
         if not models:
             return False
-        return any(re.search(m, t, re.IGNORECASE) for m in models)
+        if any(re.search(m, t, re.IGNORECASE) for m in models):
+            print(" ✅ APROVADO: Bateu na regra de Modelos (Nível Específico).", flush=True)
+            return True
 
     return False
 
-
 def _offer_score(text: str) -> tuple[int, list[str]]:
-    """Retorna (score, categorias_batidas). Score ≥ 2 = oferta válida."""
     matched: list[str] = []
     for category, patterns in OFFER_PATTERNS.items():
         if any(p.search(text) for p in patterns):
@@ -326,7 +405,6 @@ def _offer_score(text: str) -> tuple[int, list[str]]:
 
 
 def _extract_price(text: str) -> float | None:
-    """Tenta extrair o primeiro preço encontrado no texto."""
     match = re.search(r"r\$\s*([\d\.]+(?:,\d{2})?)", text, re.IGNORECASE)
     if not match:
         return None
@@ -337,18 +415,11 @@ def _extract_price(text: str) -> float | None:
 
 
 def should_alert(text: str) -> tuple[bool, dict]:
-    """
-    Decide se uma mensagem vira alerta.
-    Retorna (deve_alertar, metadados).
-    """
     level = WATCH_CONFIG.get("level", "broad")
     price_max = WATCH_CONFIG.get("price_max")
 
-    # 1. Bate no nível de monitoramento?
     if not _matches_level(text, level):
         return False, {}
-
-    # 2. Tem padrão de oferta real? (mínimo 2 categorias)
 
     score, categories = _offer_score(text)
     min_score = WATCH_CONFIG.get("min_score", 2)
@@ -357,15 +428,12 @@ def should_alert(text: str) -> tuple[bool, dict]:
 
     if require_offer_match:
         if relaxed:
-            # Se já bate no produto, aceita qualquer sinal mínimo
             if score < 1:
                 return False, {}
         else:
             if score < min_score:
                 return False, {}
-    # Se require_offer_match for False, ignora score/min_score completamente
 
-    # 3. Filtro de preço máximo (se configurado)
     extracted_price = _extract_price(text)
     if price_max and extracted_price and extracted_price > price_max:
         return False, {}
@@ -376,7 +444,6 @@ def should_alert(text: str) -> tuple[bool, dict]:
         "extracted_price": extracted_price,
     }
 
-
 # ---------------------------------------------------------------------------
 # Telegram client
 # ---------------------------------------------------------------------------
@@ -386,15 +453,20 @@ phone_code_hash = None
 
 SESSION_PATH = BASE_DIR / "sessions" / "users"
 
-
 def create_client() -> TelegramClient:
     return TelegramClient(str(SESSION_PATH), api_id, api_hash)
 
-
 client = create_client()
 client_lock = asyncio.Lock()
-app = FastAPI()
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await ensure_client_connected()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 async def ensure_client_connected() -> None:
     global client
@@ -414,25 +486,18 @@ async def ensure_client_connected() -> None:
                 detail="Nao foi possivel conectar na API do Telegram.",
             )
 
-
 # ---------------------------------------------------------------------------
 # Monitoramento ativo
 # ---------------------------------------------------------------------------
 
 async def _run_monitoring(group_ids: list[int]) -> None:
-    """Loop de monitoramento: escuta mensagens dos grupos selecionados."""
     global alert_history
 
     @client.on(events.NewMessage())
     async def handler(event):
         text = event.message.message or ""
-
         chat_id = event.chat_id
-
-        # pega config
         self_monitor = WATCH_CONFIG.get("self_monitor", False)
-
-        # verifica origem
         is_self = event.is_private and event.sender_id == (await client.get_me()).id
         is_selected_group = chat_id in group_ids
 
@@ -443,33 +508,42 @@ async def _run_monitoring(group_ids: list[int]) -> None:
 
         if ok:
             chat = await event.get_chat()
+            username = getattr(chat, "username", None)
+            
+            # --- NOVA LÓGICA DE GERAÇÃO DE LINK ---
+            if username:
+                # Se for grupo público, o link usa o username e o ID da mensagem
+                msg_link = f"https://t.me/{username}/{event.message.id}"
+            elif str(chat_id).startswith("-100"):
+                # Se for supergrupo/canal privado, a API do Telegram usa o prefixo -100
+                # Removemos o -100 e usamos o formato /c/ID/MSG
+                clean_id = str(chat_id)[4:]
+                msg_link = f"https://t.me/c/{clean_id}/{event.message.id}"
+            else:
+                msg_link = None
+            # --------------------------------------
+
             alert_history.append({
                 "group_id": chat_id,
                 "group_title": getattr(chat, "title", "Saved Messages"),
-                "username": getattr(chat, "username", None) if not is_self else None,
+                "username": username if not is_self else None,
                 "message": text[:500],
                 "message_id": event.message.id,
                 "offer_score": meta.get("offer_score"),
                 "offer_categories": meta.get("offer_categories"),
                 "extracted_price": meta.get("extracted_price"),
-                "link": f"https://t.me/{chat.username}" if getattr(chat, "username", None) else None,
+                "link": msg_link, # <-- Aqui agora recebe a nossa variável inteligente
             })
             print(f"ALERTA: {chat_id} - {chat.title if hasattr(chat, 'title') else 'Saved Messages'} - {text[:100]}...")
-            # Limita histórico em memória a 200 alertas
+            
             if len(alert_history) > 200:
                 alert_history[:] = alert_history[-200:]
-                print("Alerta: histórico limitado a 200 itens.")
 
     await client.run_until_disconnected()
 
-
 # ---------------------------------------------------------------------------
-# Startup / Shutdown
+# Startup / Shutdown / Auth / Groups
 # ---------------------------------------------------------------------------
-
-@app.on_event("startup")
-async def startup() -> None:
-    await ensure_client_connected()
 
 
 @app.on_event("shutdown")
@@ -480,15 +554,9 @@ async def shutdown() -> None:
     if client.is_connected():
         await client.disconnect()
 
-
-# ---------------------------------------------------------------------------
-# Rotas de autenticação (inalteradas)
-# ---------------------------------------------------------------------------
-
 @app.get("/")
 async def root():
     return {"status": "ok"}
-
 
 @app.post("/send.code")
 async def send_code(data: dict):
@@ -511,7 +579,6 @@ async def send_code(data: dict):
     except PhoneNumberInvalidError:
         raise HTTPException(status_code=400, detail="Numero invalido.")
 
-
 @app.post("/login")
 async def login(data: dict):
     global phone_code_hash
@@ -532,7 +599,6 @@ async def login(data: dict):
     except SessionPasswordNeededError:
         raise HTTPException(status_code=400, detail="Conta requer 2FA.")
 
-
 @app.post("/logout")
 async def logout():
     global client, phone_number, phone_code_hash
@@ -546,7 +612,6 @@ async def logout():
     phone_number = None
     phone_code_hash = None
     return {"status": "logged out"}
-
 
 @app.get("/me")
 async def get_me():
@@ -562,11 +627,6 @@ async def get_me():
         "username": me.username,
         "phone": me.phone,
     }
-
-
-# ---------------------------------------------------------------------------
-# Grupos — com filtro automático de qualidade
-# ---------------------------------------------------------------------------
 
 @app.get("/groups")
 async def get_groups():
@@ -591,13 +651,8 @@ async def get_groups():
 
     return {"groups": groups}
 
-
 @app.get("/groups/filter-preview")
 async def filter_preview():
-    """
-    Retorna todos os grupos com o motivo do filtro automático.
-    Útil para debug e para o usuário ver o que foi bloqueado automaticamente.
-    """
     await ensure_client_connected()
     if not await client.is_user_authorized():
         return {"groups": []}
@@ -623,25 +678,12 @@ async def filter_preview():
 
     return {"groups": result}
 
-
 # ---------------------------------------------------------------------------
 # Configuração de monitoramento por nível
 # ---------------------------------------------------------------------------
 
 @app.post("/watch/config")
 async def set_watch_config(data: dict):
-    """
-    Recebe a configuração de nível e parâmetros de monitoramento.
-
-    Body esperado:
-    {
-        "level": "broad" | "mid" | "specific",
-        "specific_models": ["galaxy s24 ultra", "iphone 15 pro max"],
-        "mid_brands": ["motorola edge", "poco"],
-        "broad_keywords": ["notebook", "tablet"],
-        "price_max": 2500.0
-    }
-    """
     allowed_levels = {"broad", "mid", "specific"}
     level = data.get("level", "broad")
 
@@ -649,6 +691,11 @@ async def set_watch_config(data: dict):
         raise HTTPException(status_code=400, detail=f"Nivel invalido. Use: {allowed_levels}")
 
     WATCH_CONFIG["level"] = level
+    
+    # <-- (FIX 4) Pega os cards que o usuário clicar no frontend e salva!
+    if "active_categories" in data:
+        WATCH_CONFIG["active_categories"] = data["active_categories"]
+        
     WATCH_CONFIG["specific_models"] = [str(m) for m in data.get("specific_models", [])]
     WATCH_CONFIG["mid_brands"] = [str(b) for b in data.get("mid_brands", [])]
     WATCH_CONFIG["broad_keywords"] = [str(k) for k in data.get("broad_keywords", [])]
@@ -656,7 +703,6 @@ async def set_watch_config(data: dict):
     price_raw = data.get("price_max")
     WATCH_CONFIG["price_max"] = float(price_raw) if price_raw else None
 
-    # Novos campos opcionais
     if "min_score" in data:
         WATCH_CONFIG["min_score"] = int(data["min_score"])
     if "relaxed_mode" in data:
@@ -666,23 +712,16 @@ async def set_watch_config(data: dict):
 
     return {"status": "config updated", "config": WATCH_CONFIG}
 
-
 @app.get("/watch/config")
 async def get_watch_config():
     return {"config": WATCH_CONFIG}
 
-
 # ---------------------------------------------------------------------------
-# Iniciar / Parar monitoramento
+# Iniciar / Parar monitoramento / Teste
 # ---------------------------------------------------------------------------
 
 @app.post("/watch/start")
 async def start_watch(data: dict):
-    """
-    Inicia o monitoramento dos grupos selecionados.
-
-    Body: { "group_ids": [123, 456, ...] }
-    """
     global monitoring_active, monitoring_task
 
     await ensure_client_connected()
@@ -701,7 +740,6 @@ async def start_watch(data: dict):
 
     return {"status": "monitoring started", "groups": len(group_ids), "config": WATCH_CONFIG}
 
-
 @app.post("/watch/stop")
 async def stop_watch():
     global monitoring_active, monitoring_task
@@ -718,12 +756,9 @@ async def stop_watch():
 
     monitoring_active = False
     monitoring_task = None
-
-    # Remove handlers registrados
     client.remove_event_handler(None)
 
     return {"status": "monitoring stopped"}
-
 
 @app.get("/watch/status")
 async def watch_status():
@@ -733,16 +768,9 @@ async def watch_status():
         "alerts_count": len(alert_history),
     }
 
-
-# ---------------------------------------------------------------------------
-# Alertas
-# ---------------------------------------------------------------------------
-
 @app.get("/alerts")
 async def get_alerts(limit: int = 50):
-    """Retorna os últimos alertas capturados."""
     return {"alerts": alert_history[-limit:]}
-
 
 @app.delete("/alerts")
 async def clear_alerts():
@@ -750,17 +778,8 @@ async def clear_alerts():
     alert_history = []
     return {"status": "cleared"}
 
-
-# ---------------------------------------------------------------------------
-# Testar regex de oferta manualmente
-# ---------------------------------------------------------------------------
-
 @app.post("/offers/test")
 async def test_offer(data: dict):
-    """
-    Testa se um texto seria capturado como oferta.
-    Body: { "text": "iPhone 15 Pro Max 256GB por apenas R$ 4.999 frete grátis" }
-    """
     text = data.get("text", "")
     ok, meta = should_alert(text)
     score, categories = _offer_score(text)

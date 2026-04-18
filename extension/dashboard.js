@@ -13,6 +13,7 @@ const state = {
   selectedGroupIds: new Set(),
   // Nível de monitoramento
   level: "broad",
+  active_categories: new Set(["celulares"]), // <-- NOVO ESTADO
   // Filtros por nível
   specific_models: [],
   mid_brands: [],
@@ -62,6 +63,7 @@ function clearAuthSession() {
 async function saveState() {
   await storageSet({
     level: state.level,
+    active_categories: [...state.active_categories],
     specific_models: state.specific_models,
     mid_brands: state.mid_brands,
     broad_keywords: state.broad_keywords,
@@ -73,6 +75,7 @@ async function saveState() {
 async function loadState() {
   const saved = await storageGet();
   if (saved.level) state.level = saved.level;
+  if (Array.isArray(saved.active_categories)) state.active_categories = new Set(saved.active_categories);
   if (Array.isArray(saved.specific_models)) state.specific_models = saved.specific_models;
   if (Array.isArray(saved.mid_brands)) state.mid_brands = saved.mid_brands;
   if (Array.isArray(saved.broad_keywords)) state.broad_keywords = saved.broad_keywords;
@@ -208,6 +211,12 @@ function renderLevelPanel() {
   document.getElementById("panel-specific").style.display =
     state.level === "specific" ? "block" : "none";
 
+const catCards = document.querySelectorAll(".cat-card");
+  catCards.forEach(card => {
+    const catName = card.dataset.category;
+    card.classList.toggle("active", state.active_categories.has(catName));
+  });
+
   // Preencher campos com valores do state
   document.getElementById("broadKeywordsInput").value = state.broad_keywords.join(", ");
   document.getElementById("midBrandsInput").value = state.mid_brands.join(", ");
@@ -261,6 +270,7 @@ async function pushConfigToApi() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         level: state.level,
+        active_categories: [...state.active_categories], //transforma Set em Array para enviar
         specific_models: state.specific_models,
         mid_brands: state.mid_brands,
         broad_keywords: state.broad_keywords,
@@ -549,6 +559,25 @@ function bindEvents() {
   document.getElementById("clearAlertsBtn")?.addEventListener("click", async () => {
     await fetch(`${API_BASE_URL}/alerts`, { method: "DELETE" });
     loadAlerts();
+  });
+
+  document.querySelectorAll(".cat-card").forEach((card) =>
+  {
+    card.addEventListener("click", async () => {
+      const catName = card.dataset.category;
+
+      if (state.active_categories.has(catName)) {
+        state.active_categories.delete(catName);
+      } else {
+        state.active_categories.add(catName);
+      }
+
+      // Atualiza o visual
+      card.classList.toggle("active", state.active_categories.has(catName));
+      
+      // Salva no storage automaticamente
+      await saveState();
+    });
   });
 }
 
