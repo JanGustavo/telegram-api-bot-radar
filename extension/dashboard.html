@@ -180,6 +180,7 @@
         padding: 22px;
         display: flex;
         flex-direction: column;
+        height: 100%; /* <-- ADICIONE ESTA LINHA */
       }
 
       .card-header {
@@ -250,7 +251,8 @@
       .scroll-area {
         flex: 1;
         overflow-y: auto;
-        max-height: 420px;
+        height: 0; /* Mágica do flexbox: força a div a respeitar os limites do card pai */
+        min-height: 200px; /* Altura mínima de segurança */
         padding-right: 6px;
       }
       .scroll-area::-webkit-scrollbar {
@@ -261,20 +263,116 @@
         border-radius: 10px;
       }
 
-      /* Grupos */
+      /* ----- Banner de Filtro de Grupos ----- */
       .filter-banner {
-        background: rgba(251, 191, 36, 0.08);
-        border: 1px solid rgba(251, 191, 36, 0.2);
-        border-radius: 12px;
-        padding: 10px 14px;
-        font-size: 12px;
-        color: #fde68a;
-        margin-bottom: 12px;
+        background: linear-gradient(
+          145deg,
+          rgba(245, 158, 11, 0.12),
+          rgba(245, 158, 11, 0.02)
+        );
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: inset 0 2px 10px rgba(245, 158, 11, 0.05);
+      }
+
+      .filter-banner-content {
         display: flex;
         align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
+        gap: 14px;
       }
+
+      .filter-icon {
+        font-size: 20px;
+        background: rgba(245, 158, 11, 0.15);
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        border: 1px solid rgba(245, 158, 11, 0.25);
+        box-shadow: 0 4px 10px rgba(245, 158, 11, 0.1);
+      }
+
+      .filter-text {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .filter-title {
+        font-size: 13px;
+        color: #fde68a;
+        font-weight: 500;
+      }
+
+      .filter-title strong {
+        color: #fbbf24;
+        font-weight: 800;
+        font-size: 15px;
+      }
+
+      .filter-desc {
+        font-size: 11px;
+        color: rgba(253, 230, 138, 0.6);
+        margin-top: 2px;
+      }
+
+      /* Checkbox customizado dentro do banner */
+      .show-filtered-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 600;
+        padding-top: 12px;
+        border-top: 1px dashed rgba(245, 158, 11, 0.15);
+        transition: color 0.2s;
+        user-select: none;
+      }
+
+      .show-filtered-label:hover {
+        color: #fde68a;
+      }
+
+      .show-filtered-label input {
+        display: none; /* Esconde a caixinha feia padrão do navegador */
+      }
+
+      .custom-checkbox {
+        width: 16px;
+        height: 16px;
+        border: 1.5px solid rgba(245, 158, 11, 0.4);
+        border-radius: 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        background: rgba(15, 23, 42, 0.5);
+      }
+
+      .show-filtered-label input:checked + .custom-checkbox {
+        background: #f59e0b;
+        border-color: #f59e0b;
+      }
+
+      /* Desenha um "check" dinâmico quando ativo */
+      .show-filtered-label input:checked + .custom-checkbox::after {
+        content: "";
+        width: 4px;
+        height: 8px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+        margin-bottom: 2px;
+      }
+
       .show-filtered-label {
         display: flex;
         align-items: center;
@@ -673,6 +771,84 @@
         background: #064e3b;
         color: #6ee7b7;
       }
+
+      /* ----- Pills (Botões) de Marcas ----- */
+      .brand-pills-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center; /* Centraliza as bolhas para um visual mais simétrico */
+        gap: 8px; /* Espaçamento via flexbox */
+        margin-bottom: 20px;
+        background: rgba(15, 23, 42, 0.4);
+        padding: 20px 10px;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        min-height: 60px;
+        box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .brand-pill {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--text-muted);
+        padding: 7px 14px; /* Deixamos levemente menos "gordinhos" */
+        margin: 4px; /* A MÁGICA AQUI: Força o espaçamento independente do navegador! */
+        border-radius: 99px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* O "LED" indicador de status (desligado) */
+      .brand-pill::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.3;
+        transition: all 0.25s ease;
+      }
+
+      /* Efeito ao passar o mouse */
+      .brand-pill:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: var(--text-main);
+        transform: translateY(-1px); /* Levanta levemente */
+      }
+
+      .brand-pill:hover::before {
+        opacity: 0.6;
+      }
+
+      /* Estado Ativado (Clicado) */
+      .brand-pill.active {
+        background: linear-gradient(135deg, var(--primary), #005f99);
+        border-color: transparent;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 6px 15px rgba(0, 136, 204, 0.35); /* Sombra colorida */
+        transform: translateY(-2px); /* Levanta um pouco mais */
+      }
+
+      /* O "LED" indicador de status (ligado e brilhando) */
+      .brand-pill.active::before {
+        background: white;
+        opacity: 1;
+        box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+      }
+
+      /* Efeito de afundar ao apertar o clique do mouse */
+      .brand-pill:active {
+        transform: translateY(0);
+      }
     </style>
   </head>
   <body>
@@ -687,7 +863,7 @@
               />
             </svg>
           </div>
-          <h2>Telegram Radar</h2>
+          <h2>Telegram PromoPulse</h2>
         </div>
         <div class="user-actions">
           <div id="user"><div class="user-badge">Verificando...</div></div>
@@ -770,35 +946,63 @@
 
           <!-- Painel: MÉDIO -->
           <div id="panel-mid" style="display: none">
-            <span class="level-label">Marcas/Linhas específicas</span>
+            <span class="level-label">Filtro Inteligente de Marcas</span>
             <p class="level-desc">
-              Monitora apenas linhas como
-              <em>Galaxy S, iPhone 15+, Motorola Edge, POCO F…</em>
+              1. Selecione as categorias de interesse.<br />
+              2. Clique nas marcas que deseja monitorar.
             </p>
+
+            <div class="category-grid">
+              <button class="cat-card active" data-category="celulares">
+                <span class="cat-icon">📱</span>
+                <span class="cat-name">Celulares</span>
+              </button>
+              <button class="cat-card" data-category="tvs">
+                <span class="cat-icon">📺</span>
+                <span class="cat-name">TVs & Smart</span>
+              </button>
+              <button class="cat-card" data-category="audio">
+                <span class="cat-icon">🎧</span>
+                <span class="cat-name">Áudio</span>
+              </button>
+              <button class="cat-card" data-category="higiene">
+                <span class="cat-icon">🧼</span>
+                <span class="cat-name">Higiene</span>
+              </button>
+              <button class="cat-card" data-category="informatica">
+                <span class="cat-icon">💻</span>
+                <span class="cat-name">Informática</span>
+              </button>
+              <button class="cat-card" data-category="casa">
+                <span class="cat-icon">🏠</span>
+                <span class="cat-name">Casa</span>
+              </button>
+            </div>
+
             <label class="input-label"
-              >Marcas/linhas (separadas por vírgula)</label
+              >Marcas disponíveis (clique para selecionar)</label
+            >
+            <div id="dynamicBrandSelect" class="brand-pills-container"></div>
+
+            <label class="input-label"
+              >Marcas personalizadas (separadas por vírgula)</label
             >
             <input
               id="midBrandsInput"
-              placeholder="Galaxy S, iPhone 15, Motorola Edge…"
+              placeholder="Ex: Corsair, Multilaser, Sony..."
             />
           </div>
 
           <!-- Painel: ESPECÍFICO -->
-          <div id="panel-specific">
-            <span class="level-label">Modelos exatos (regex)</span>
+          <div id="panel-specific" style="display: none">
+            <span class="level-label">Atirador de Elite (Modelos)</span>
             <p class="level-desc">
-              Um modelo por linha. Suporta regex:<br />
-              <code style="font-size: 11px; color: #93c5fd"
-                >galaxy s2[34] ultra</code
-              ><br />
-              <code style="font-size: 11px; color: #93c5fd"
-                >iphone 15 pro max</code
-              >
+              Digite o nome dos modelos (um por linha). O radar encontrará o
+              produto mesmo que as palavras estejam fora de ordem.
             </p>
             <textarea
               id="specificModelsInput"
-              placeholder="galaxy s24 ultra&#10;iphone 15 pro max&#10;poco x6 pro"
+              placeholder="Exemplo:&#10;iPhone 15 Pro Max&#10;Galaxy S24 Ultra&#10;RTX 4060 Ti"
             ></textarea>
           </div>
 

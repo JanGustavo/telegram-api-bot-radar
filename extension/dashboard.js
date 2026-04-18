@@ -13,12 +13,23 @@ const state = {
   selectedGroupIds: new Set(),
   // Nível de monitoramento
   level: "broad",
-  active_categories: new Set(["celulares"]), // <-- NOVO ESTADO
+  active_categories: new Set(["celulares"]),
+  mid_selected_brands: new Set(), // <-- NOVO ESTADO
   // Filtros por nível
   specific_models: [],
   mid_brands: [],
   broad_keywords: [],
   price_max: null,
+};
+
+// Dicionário Inteligente de Marcas
+const BRANDS_MAP = {
+  celulares: ["Apple", "Samsung", "Xiaomi", "Motorola", "Poco", "Realme", "Asus"],
+  tvs: ["Samsung", "LG", "TCL", "Philips", "AOC", "Philco"],
+  audio: ["JBL", "Sony", "Edifier", "Apple", "Samsung", "Sennheiser", "QCY"],
+  higiene: ["Dove", "L'Oréal", "Nivea", "Rexona", "Gillette", "Pampers"],
+  informatica: ["Dell", "Lenovo", "Acer", "Asus", "Apple", "Avell", "Logitech"],
+  casa: ["Mondial", "Electrolux", "Philco", "Oster", "Midea", "Arno"]
 };
 
 // ---------------------------------------------------------------------------
@@ -69,6 +80,7 @@ async function saveState() {
     broad_keywords: state.broad_keywords,
     price_max: state.price_max,
     selectedGroupIds: [...state.selectedGroupIds],
+    mid_selected_brands: [...state.mid_selected_brands],
   });
 }
 
@@ -82,6 +94,9 @@ async function loadState() {
   if (saved.price_max !== undefined) state.price_max = saved.price_max;
   if (Array.isArray(saved.selectedGroupIds)) {
     state.selectedGroupIds = new Set(saved.selectedGroupIds);
+  }
+  if (Array.isArray(saved.mid_selected_brands)) {
+    state.mid_selected_brands = new Set(saved.mid_selected_brands);
   }
 }
 
@@ -128,15 +143,22 @@ function renderGroups() {
 
   const totalFiltered = allGroups.filter((g) => g.auto_filtered).length;
   const banner =
-    totalFiltered > 0
-      ? `<div class="filter-banner">
-          🛡️ <strong>${totalFiltered}</strong> grupo(s) bloqueado(s) automaticamente (bots/spam/crypto)
-          <label class="show-filtered-label">
-            <input type="checkbox" id="showFilteredToggle" ${showFiltered ? "checked" : ""} />
-            mostrar mesmo assim
-          </label>
-        </div>`
-      : "";
+      totalFiltered > 0
+        ? `<div class="filter-banner">
+            <div class="filter-banner-content">
+              <div class="filter-icon">🛡️</div>
+              <div class="filter-text">
+                <span class="filter-title"><strong>${totalFiltered}</strong> grupos bloqueados</span>
+                <span class="filter-desc">Filtro anti-spam/crypto ativado</span>
+              </div>
+            </div>
+            <label class="show-filtered-label">
+              <input type="checkbox" id="showFilteredToggle" ${showFiltered ? "checked" : ""} />
+              <span class="custom-checkbox"></span>
+              Mostrar grupos ocultos
+            </label>
+          </div>`
+        : "";
 
   let html = banner;
   for (const group of visible) {
@@ -272,7 +294,7 @@ async function pushConfigToApi() {
         level: state.level,
         active_categories: [...state.active_categories], //transforma Set em Array para enviar
         specific_models: state.specific_models,
-        mid_brands: state.mid_brands,
+        mid_brands: [...state.mid_selected_brands, ...state.mid_brands],
         broad_keywords: state.broad_keywords,
         price_max: state.price_max,
       }),
@@ -514,6 +536,49 @@ async function loadGroups() {
 // ---------------------------------------------------------------------------
 // Event bindings
 // ---------------------------------------------------------------------------
+
+function renderMidBrands() {
+  const container = document.getElementById("dynamicBrandSelect");
+  if (!container) return;
+
+  // 1. Coleta todas as marcas únicas das categorias que estão ativas
+  let availableBrands = new Set();
+  state.active_categories.forEach(cat => {
+    if (BRANDS_MAP[cat]) {
+      BRANDS_MAP[cat].forEach(b => availableBrands.add(b));
+    }
+  });
+
+  // 2. Se nenhuma categoria estiver ativa
+  if (availableBrands.size === 0) {
+    container.innerHTML = '<div class="empty-state" style="width:100%; padding:10px;">Selecione uma categoria acima para ver as marcas.</div>';
+    return;
+  }
+
+  // 3. Ordena alfabeticamente e renderiza o foreach
+  const sortedBrands = Array.from(availableBrands).sort();
+  container.innerHTML = "";
+  
+  sortedBrands.forEach(brand => {
+    const btn = document.createElement("button");
+    btn.className = `brand-pill ${state.mid_selected_brands.has(brand) ? "active" : ""}`;
+    btn.textContent = brand;
+    
+    // Toggle mágico
+    btn.addEventListener("click", async () => {
+      if (state.mid_selected_brands.has(brand)) {
+        state.mid_selected_brands.delete(brand);
+      } else {
+        state.mid_selected_brands.add(brand);
+      }
+      btn.classList.toggle("active");
+      await saveState();
+    });
+    
+    container.appendChild(btn);
+  });
+}
+
 function bindEvents() {
   // Nível
   document.querySelectorAll(".level-btn").forEach((btn) => {
@@ -572,9 +637,14 @@ function bindEvents() {
         state.active_categories.add(catName);
       }
 
-      // Atualiza o visual
-      card.classList.toggle("active", state.active_categories.has(catName));
-      
+      // IMPORTANTE: Atualiza o visual de TODOS os cards com esse nome (nos dois painéis)
+      document.querySelectorAll(`.cat-card[data-category="${catName}"]`).forEach(c => {
+        c.classList.toggle("active", state.active_categories.has(catName));
+      });
+
+      // Atualiza as marcas disponíveis no nível médio com base nas categorias ativas
+      renderMidBrands(); 
+
       // Salva no storage automaticamente
       await saveState();
     });
@@ -605,6 +675,7 @@ async function init() {
   loadGroups();
   bindEvents();
   loadAlerts();
+  renderMidBrands();
   if ("Notification" in window && Notification.permission !== "granted") {
   Notification.requestPermission();
 }

@@ -1,23 +1,23 @@
 {
    "manifest_version": 3,
-   "name": "Telegram Radar",
+   "name": "Telegram PromoPulse",
    "version": "1.0.0",
-   "description": "Extensão para autenticar e abrir o painel do Telegram Radar.",
+   "description": "Extensão para autenticar e abrir o painel do Telegram PromoPulse.",
    "action": {
-	   "default_title": "Telegram Radar",
+	   "default_title": "Telegram PromoPulse",
 	   "default_popup": "popup.html",
 	   "default_icon": {
-		   "16": "telegram_logo.svg",
-		   "32": "telegram_logo.svg",
-		   "48": "telegram_logo.svg",
-		   "128": "telegram_logo.svg"
+		   "16": "telegram_logo_16.png",
+		   "32": "telegram_logo_32.png",
+		   "48": "telegram_logo_48.png",
+		   "128": "telegram_logo_128.png"
 	   }
    },
    "icons": {
-	   "16": "telegram_logo.svg",
-	   "32": "telegram_logo.svg",
-	   "48": "telegram_logo.svg",
-	   "128": "telegram_logo.svg"
+	   "16": "telegram_logo_16.png",
+	   "32": "telegram_logo_32.png",
+	   "48": "telegram_logo_48.png",
+	   "128": "telegram_logo_128.png"
    },
    "permissions": ["storage", "tabs"],
    "host_permissions": ["http://localhost:8000/*"]

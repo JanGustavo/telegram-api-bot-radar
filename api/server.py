@@ -266,14 +266,6 @@ def _validate_category(text: str, category: str) -> bool:
     print(f" ➖ IGNORADO: Texto não pertence a {category.upper()}.", flush=True)
     return False
 
-_MID_DEFAULTS = [
-    r"galaxy\s*[as]\d{1,2}",
-    r"iphone\s*(1[3-9]|2\d)",
-    r"motorola\s*edge",
-    r"xiaomi\s*(1[0-9]|redmi\s*note)",
-    r"poco\s*[fx]\d",
-]
-
 # ---------------------------------------------------------------------------
 # Padrões de identificação de ofertas reais
 # ---------------------------------------------------------------------------
@@ -379,23 +371,50 @@ def _matches_level(text: str, level: str) -> bool:
 
     if level == "mid":
         mid_brands = WATCH_CONFIG.get("mid_brands", [])
-        print(f"Marcas digitadas (Mid): {mid_brands}", flush=True)
-        patterns = _MID_DEFAULTS + [rf"\b{re.escape(b)}\b" for b in mid_brands]
+        print(f"Marcas rastreadas (Mid): {mid_brands}", flush=True)
+        
+        if not mid_brands:
+            return False
+        
+        # Pega a união perfeita: O que ele clicou + O que ele digitou
+        patterns = [rf"\b{re.escape(b)}\b" for b in mid_brands]
+        
         if any(re.search(p, t, re.IGNORECASE) for p in patterns):
             print(" ✅ APROVADO: Bateu na regra de Marcas (Nível Mid).", flush=True)
             return True
-
+            
+        return False
+    
     if level == "specific":
-        models = WATCH_CONFIG.get("specific_models", [])
-        print(f"Modelos digitados (Specific): {models}", flush=True)
-        if not models:
+            models = WATCH_CONFIG.get("specific_models", [])
+            if not models:
+                return False
+    
+            t_clean = _remove_accents(t) # Usa a função de limpeza que criamos
+    
+            for model in models:
+                # 1. Limpa acentos do modelo buscado e separa em palavras
+                keywords = _remove_accents(model.lower()).split()
+                if not keywords: continue
+    
+                # 2. Constrói um Regex que exige que TODAS as palavras existam na frase
+                # Ex: "iphone 15 pro" vira "(?=.*iphone)(?=.*15)(?=.*pro)"
+                fuzzy_pattern = "".join([rf"(?=.*{re.escape(kw)})" for kw in keywords])
+                
+                if re.search(fuzzy_pattern, t_clean):
+                    print(f" ✅ APROVADO (ESPECÍFICO): Modelo '{model}' encontrado via Fuzzy Match!", flush=True)
+                    
+                    # 3. Proteção Final: Mesmo no nível específico, bloqueamos acessórios
+                    # Procuramos em todas as categorias por palavras de exclusão
+                    for cat in CATEGORY_RULES:
+                        for exc in CATEGORY_RULES[cat].get("exclude", []):
+                            if re.search(exc, t_clean):
+                                print(f" ❌ BLOQUEADO (ESPECÍFICO): Encontrou acessório/exclusão '{exc}'", flush=True)
+                                return False
+                    return True
+    
             return False
-        if any(re.search(m, t, re.IGNORECASE) for m in models):
-            print(" ✅ APROVADO: Bateu na regra de Modelos (Nível Específico).", flush=True)
-            return True
-
-    return False
-
+    
 def _offer_score(text: str) -> tuple[int, list[str]]:
     matched: list[str] = []
     for category, patterns in OFFER_PATTERNS.items():
