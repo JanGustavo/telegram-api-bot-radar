@@ -1,13 +1,27 @@
 # Changelog
 
-## [1.0.0] - 2026-04-18
+## [1.1.0] - 2026-04-20
 
-### 🚀 Lançamento Inicial
+### ✨ Novidades e Inteligência
 
-- Primeira versão do Telegram PromoPulse.
-- Implementação de filtros avançados: Nível Amplo, Marcas e Específico (Fuzzy Match).
-- Validação contextual de ofertas utilizando FastAPI e Telethon.
-- Interface moderna com Glassmorphism na extensão para Chrome.
-- Integração entre backend (API) e extensão para experiência fluida.
-- Suporte a múltiplos usuários e sessões.
-- Documentação inicial e exemplos de uso.
+- Sistema de Abas Independentes: Os níveis de monitoramento (Amplo, Marcas e Modelos) agora funcionam como menus isolados, permitindo ativar ou pausar cada radar de forma individual sem interferência entre os painéis.
+
+- "Clickbait Killer": Implementação de lógica para extrair o nome real do produto, removendo frases de gatilho comuns em canais de ofertas (ex: "NGM MERECE COMER MARMITA FRIA").
+
+- Expansão de Categorias: Adição de suporte completo para monitoramento de Moda & Acessórios, Games & Hardware e Esportes.
+
+- Detecção de Pagamento: O motor agora identifica condições de preço, como descontos exclusivos no PIX ou parcelamentos sem juros.
+
+### 🛠️ Arquitetura e Performance
+
+- Modularização de Estilos: Migração de todo o CSS interno da extensão para um arquivo dedicado (dashboard.css), facilitando a manutenção e o carregamento.
+
+- Refatoração do Backend: Reorganização estrutural do server.py para suportar múltiplos níveis de busca simultâneos e processamento paralelo de categorias.
+
+- Automação de Releases: Integração total com GitHub Actions para geração automática de pacotes .zip e publicação de releases a cada nova tag de versão.
+
+### 🐞 Correções
+
+- Isolamento de Memória: Correção de bug onde a seleção de uma categoria em um nível ativava erroneamente a mesma categoria em outro painel.
+
+- Sanitização de Cache: Implementação de rotina para limpar estados antigos de memória (Ghost State) ao carregar novas versões da extensão.
