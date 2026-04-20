@@ -15,6 +15,7 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
         with:
+          ref: master
           fetch-depth: 0 # CRÍTICO: Permite que o robô leia o histórico de commits do Git
 
       - name: Atualizar CHANGELOG.md automaticamente
