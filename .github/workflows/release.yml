@@ -3,13 +3,13 @@ name: Build and Release Extension
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
 
     steps:
       - name: Checkout do código
@@ -25,6 +25,14 @@ jobs:
           output-file: "CHANGELOG.md"
           skip-version-file: "true" # Evita tentar alterar package.json que não temos
           git-message: "docs: atualiza CHANGELOG.md para ${{ github.ref_name }} [skip ci]"
+
+      - name: Injetar Versão no manifest.json
+        run: |
+          cd extension
+          # Remove o 'v' do nome da tag (ex: transforma v1.1.2 em 1.1.2)
+          VERSION=${GITHUB_REF_NAME#v}
+          # Usa o jq para substituir o campo "version" dentro do arquivo
+          jq ".version = \"$VERSION\"" manifest.json > tmp.json && mv tmp.json manifest.json
 
       - name: Zipar a extensão
         run: |

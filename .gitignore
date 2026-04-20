@@ -20,3 +20,4 @@ sessions/*.session
 .DS_Store
 Thumbs.db
 .vscode/
+.session
