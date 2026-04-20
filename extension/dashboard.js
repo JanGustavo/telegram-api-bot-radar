@@ -9,13 +9,12 @@ let monitoringActive = false;
 let lastAlertId = null;
 
 const state = {
-  // Grupos selecionados manualmente (toggle)
   selectedGroupIds: new Set(),
-  // Nível de monitoramento
-  level: "broad",
-  active_categories: new Set(["celulares"]),
-  mid_selected_brands: new Set(), // <-- NOVO ESTADO
-  // Filtros por nível
+  broad_categories: new Set(["celulares"]), // Memória do painel Amplo
+  mid_categories: new Set(), // Memória do painel Marcas
+  current_tab: "broad",
+  active_levels: new Set(["broad"]), // Níveis ativos (pode ser "broad", "mid", "specific")
+  mid_selected_brands: new Set(),
   specific_models: [],
   mid_brands: [],
   broad_keywords: [],
@@ -29,7 +28,10 @@ const BRANDS_MAP = {
   audio: ["JBL", "Sony", "Edifier", "Apple", "Samsung", "Sennheiser", "QCY"],
   higiene: ["Dove", "L'Oréal", "Nivea", "Rexona", "Gillette", "Pampers"],
   informatica: ["Dell", "Lenovo", "Acer", "Asus", "Apple", "Avell", "Logitech"],
-  casa: ["Mondial", "Electrolux", "Philco", "Oster", "Midea", "Arno"]
+  casa: ["Mondial", "Electrolux", "Philco", "Oster", "Midea", "Arno"],
+  moda: ["Nike", "Adidas", "Puma", "Hering", "Lupo", "Vans", "Reserva", "Olimpikus"],
+  games: ["PlayStation", "Xbox", "Nintendo", "Sony", "Microsoft", "Asus", "Gigabyte"],
+  esportes: ["Nike", "Adidas", "Puma", "Under Armour", "Asics", "Mizuno", "Penalty"],
 };
 
 // ---------------------------------------------------------------------------
@@ -73,32 +75,35 @@ function clearAuthSession() {
 
 async function saveState() {
   await storageSet({
-    level: state.level,
-    active_categories: [...state.active_categories],
+    active_levels: [...state.active_levels],
+    broad_categories: [...state.broad_categories],
+    mid_categories: [...state.mid_categories],
+    mid_selected_brands: [...state.mid_selected_brands],
     specific_models: state.specific_models,
     mid_brands: state.mid_brands,
     broad_keywords: state.broad_keywords,
     price_max: state.price_max,
     selectedGroupIds: [...state.selectedGroupIds],
-    mid_selected_brands: [...state.mid_selected_brands],
   });
 }
 
 async function loadState() {
   const saved = await storageGet();
-  if (saved.level) state.level = saved.level;
-  if (Array.isArray(saved.active_categories)) state.active_categories = new Set(saved.active_categories);
-  if (Array.isArray(saved.specific_models)) state.specific_models = saved.specific_models;
-  if (Array.isArray(saved.mid_brands)) state.mid_brands = saved.mid_brands;
-  if (Array.isArray(saved.broad_keywords)) state.broad_keywords = saved.broad_keywords;
-  if (saved.price_max !== undefined) state.price_max = saved.price_max;
-  if (Array.isArray(saved.selectedGroupIds)) {
-    state.selectedGroupIds = new Set(saved.selectedGroupIds);
-  }
-  if (Array.isArray(saved.mid_selected_brands)) {
-    state.mid_selected_brands = new Set(saved.mid_selected_brands);
-  }
+  
+  if (saved.active_levels) state.active_levels = new Set(saved.active_levels);
+  
+  // Transforma os arrays salvos de volta em Set (memória isolada)
+  if (saved.broad_categories) state.broad_categories = new Set(saved.broad_categories);
+  if (saved.mid_categories) state.mid_categories = new Set(saved.mid_categories);
+  if (saved.mid_selected_brands) state.mid_selected_brands = new Set(saved.mid_selected_brands);
+
+  if (saved.specific_models) state.specific_models = saved.specific_models;
+  if (saved.mid_brands) state.mid_brands = saved.mid_brands;
+  if (saved.broad_keywords) state.broad_keywords = saved.broad_keywords;
+  if (saved.price_max) state.price_max = saved.price_max;
+  if (saved.selectedGroupIds) state.selectedGroupIds = new Set(saved.selectedGroupIds);
 }
+
 
 // ---------------------------------------------------------------------------
 // Utilitários
@@ -219,32 +224,7 @@ function renderGroups() {
 // ---------------------------------------------------------------------------
 // Renderizar painel de níveis
 // ---------------------------------------------------------------------------
-function renderLevelPanel() {
-  const levelBtns = document.querySelectorAll(".level-btn");
-  levelBtns.forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.level === state.level);
-  });
 
-  // Esconder/mostrar painéis de configuração por nível
-  document.getElementById("panel-broad").style.display =
-    state.level === "broad" ? "block" : "none";
-  document.getElementById("panel-mid").style.display =
-    state.level === "mid" ? "block" : "none";
-  document.getElementById("panel-specific").style.display =
-    state.level === "specific" ? "block" : "none";
-
-const catCards = document.querySelectorAll(".cat-card");
-  catCards.forEach(card => {
-    const catName = card.dataset.category;
-    card.classList.toggle("active", state.active_categories.has(catName));
-  });
-
-  // Preencher campos com valores do state
-  document.getElementById("broadKeywordsInput").value = state.broad_keywords.join(", ");
-  document.getElementById("midBrandsInput").value = state.mid_brands.join(", ");
-  document.getElementById("specificModelsInput").value = state.specific_models.join("\n");
-  document.getElementById("priceMaxInput").value = state.price_max ?? "";
-}
 
 // ---------------------------------------------------------------------------
 // Testar oferta em tempo real
@@ -291,8 +271,8 @@ async function pushConfigToApi() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        level: state.level,
-        active_categories: [...state.active_categories], //transforma Set em Array para enviar
+        active_levels: [...state.active_levels],
+        broad_categories: [...state.broad_categories],
         specific_models: state.specific_models,
         mid_brands: [...state.mid_selected_brands, ...state.mid_brands],
         broad_keywords: state.broad_keywords,
@@ -300,7 +280,7 @@ async function pushConfigToApi() {
       }),
     });
   } catch {
-    // API offline — config foi salva localmente, vai sincronizar ao iniciar
+    // API offline
   }
 }
 
@@ -541,30 +521,34 @@ function renderMidBrands() {
   const container = document.getElementById("dynamicBrandSelect");
   if (!container) return;
 
-  // 1. Coleta todas as marcas únicas das categorias que estão ativas
   let availableBrands = new Set();
-  state.active_categories.forEach(cat => {
-    if (BRANDS_MAP[cat]) {
-      BRANDS_MAP[cat].forEach(b => availableBrands.add(b));
-    }
-  });
+  
+  // A MÁGICA ESTÁ AQUI: Garante que o loop só rode nas categorias que você clicou no painel Marcas!
+  if (state.mid_categories && state.mid_categories.size > 0) {
+    state.mid_categories.forEach(cat => {
+      if (BRANDS_MAP[cat]) {
+        BRANDS_MAP[cat].forEach(b => availableBrands.add(b));
+      }
+    });
+  }
 
-  // 2. Se nenhuma categoria estiver ativa
+  // Se nenhuma categoria estiver clicada, mostra o aviso
   if (availableBrands.size === 0) {
     container.innerHTML = '<div class="empty-state" style="width:100%; padding:10px;">Selecione uma categoria acima para ver as marcas.</div>';
     return;
   }
 
-  // 3. Ordena alfabeticamente e renderiza o foreach
+  // Ordena alfabeticamente e cria os botões
   const sortedBrands = Array.from(availableBrands).sort();
   container.innerHTML = "";
   
   sortedBrands.forEach(brand => {
     const btn = document.createElement("button");
+    // Verifica se a marca já tinha sido selecionada antes
     btn.className = `brand-pill ${state.mid_selected_brands.has(brand) ? "active" : ""}`;
     btn.textContent = brand;
     
-    // Toggle mágico
+    // O clique na bolha da marca
     btn.addEventListener("click", async () => {
       if (state.mid_selected_brands.has(brand)) {
         state.mid_selected_brands.delete(brand);
@@ -573,6 +557,7 @@ function renderMidBrands() {
       }
       btn.classList.toggle("active");
       await saveState();
+      await pushConfigToApi(); // Atualiza o radar em tempo real
     });
     
     container.appendChild(btn);
@@ -581,11 +566,26 @@ function renderMidBrands() {
 
 function bindEvents() {
   // Nível
+ // --- ABAS (Mudam apenas a aba visual no painel) ---
   document.querySelectorAll(".level-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      state.level = btn.dataset.level;
+      state.current_tab = btn.dataset.level;
       renderLevelPanel();
-      saveState();
+    });
+  });
+
+  // --- BOTÕES DE ATIVAÇÃO (Ligar/Desligar o Radar no Python) ---
+  document.querySelectorAll(".btn-activate-level").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const lvl = btn.dataset.level;
+      if (state.active_levels.has(lvl)) {
+        state.active_levels.delete(lvl); // Pausa
+      } else {
+        state.active_levels.add(lvl); // Ativa
+      }
+      renderLevelPanel();
+      await saveState();
+      await pushConfigToApi(); // Envia pro servidor
     });
   });
 
@@ -609,6 +609,11 @@ function bindEvents() {
     });
   });
 
+// ---------------------------------------------------------------------------
+// Renderização Visual
+// ---------------------------------------------------------------------------
+
+
   // Logout
   document.getElementById("logoutBtn").addEventListener("click", logout);
 
@@ -626,27 +631,24 @@ function bindEvents() {
     loadAlerts();
   });
 
-  document.querySelectorAll(".cat-card").forEach((card) =>
-  {
+// --- Cartões de Categoria (Totalmente Independentes) ---
+  document.querySelectorAll(".cat-card").forEach((card) => {
     card.addEventListener("click", async () => {
       const catName = card.dataset.category;
+      const panel = card.dataset.panel; // "broad" ou "mid"
 
-      if (state.active_categories.has(catName)) {
-        state.active_categories.delete(catName);
-      } else {
-        state.active_categories.add(catName);
+      if (panel === "broad") {
+        if (state.broad_categories.has(catName)) state.broad_categories.delete(catName);
+        else state.broad_categories.add(catName);
+      } else if (panel === "mid") {
+        if (state.mid_categories.has(catName)) state.mid_categories.delete(catName);
+        else state.mid_categories.add(catName);
+        renderMidBrands(); 
       }
 
-      // IMPORTANTE: Atualiza o visual de TODOS os cards com esse nome (nos dois painéis)
-      document.querySelectorAll(`.cat-card[data-category="${catName}"]`).forEach(c => {
-        c.classList.toggle("active", state.active_categories.has(catName));
-      });
-
-      // Atualiza as marcas disponíveis no nível médio com base nas categorias ativas
-      renderMidBrands(); 
-
-      // Salva no storage automaticamente
+      card.classList.toggle("active", panel === "broad" ? state.broad_categories.has(catName) : state.mid_categories.has(catName));
       await saveState();
+      await pushConfigToApi();
     });
   });
 }
@@ -665,6 +667,47 @@ function notify(alert){
   }
 }
 
+function renderLevelPanel() {
+  // 1. Atualiza as ABAS (Visualização)
+  document.querySelectorAll(".level-btn").forEach((btn) => {
+    const lvl = btn.dataset.level;
+    if (state.current_tab === lvl) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  // 2. Mostra apenas o painel da aba selecionada (3 Menus Diferentes!)
+  const panelBroad = document.getElementById("panel-broad");
+  const panelMid = document.getElementById("panel-mid");
+  const panelSpecific = document.getElementById("panel-specific");
+
+  if (panelBroad) panelBroad.style.display = state.current_tab === "broad" ? "block" : "none";
+  if (panelMid) panelMid.style.display = state.current_tab === "mid" ? "block" : "none";
+  if (panelSpecific) panelSpecific.style.display = state.current_tab === "specific" ? "block" : "none";
+
+  // 3. Sincroniza os Botões de Ligar/Desligar dentro dos painéis
+  document.querySelectorAll(".btn-activate-level").forEach((btn) => {
+    const lvl = btn.dataset.level;
+    if (state.active_levels.has(lvl)) {
+      btn.classList.add("running");
+      btn.innerHTML = "🟢 Radar Ativado";
+    } else {
+      btn.classList.remove("running");
+      btn.innerHTML = "⚪ Pausado";
+    }
+  });
+
+  // Sincroniza os cartões de categorias
+  document.querySelectorAll(`.cat-card[data-panel="broad"]`).forEach(c => {
+    c.classList.toggle("active", state.broad_categories.has(c.dataset.category));
+  });
+  document.querySelectorAll(`.cat-card[data-panel="mid"]`).forEach(c => {
+    c.classList.toggle("active", state.mid_categories.has(c.dataset.category));
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
@@ -681,4 +724,5 @@ async function init() {
 }
 }
 
-init();
+//obriga o carregamento do DOM antes de iniciar a aplicação
+document.addEventListener("DOMContentLoaded", init);
