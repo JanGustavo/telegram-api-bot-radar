@@ -14,6 +14,17 @@ jobs:
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # CRÍTICO: Permite que o robô leia o histórico de commits do Git
+
+      - name: Atualizar CHANGELOG.md automaticamente
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-file: "CHANGELOG.md"
+          skip-version-file: "true" # Evita tentar alterar package.json que não temos
+          git-message: "docs: atualiza CHANGELOG.md para ${{ github.ref_name }} [skip ci]"
 
       - name: Zipar a extensão
         run: |
@@ -24,4 +35,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: PromoPulse-Extension-${{ github.ref_name }}.zip
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.clean_changelog }} # Usa o texto do changelog gerado na release!

@@ -226,60 +226,50 @@ header {
 
 /* --- Banner de filtro automático --- */
 .filter-banner {
-    background: linear-gradient(145deg,
-            rgba(245, 158, 11, 0.12),
-            rgba(245, 158, 11, 0.02));
-    border: 1px solid rgba(245, 158, 11, 0.2);
-    border-radius: var(--radius-lg);
-    padding: 16px;
-    margin-bottom: 16px;
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    box-shadow: inset 0 2px 10px rgba(245, 158, 11, 0.05);
+    flex-direction: column; /* Empilha em ecrãs pequenos */
+    gap: 10px;
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box; /* Fundamental para não sair para fora */
+}
+
+/* No desktop ou cards largos, volta a ser lado a lado */
+@media (min-width: 400px) {
+  .filter-banner {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .filter-banner-content {
     display: flex;
     align-items: center;
-    gap: 14px;
-}
-
-.filter-icon {
-    font-size: 20px;
-    width: 38px;
-    height: 38px;
-    background: rgba(245, 158, 11, 0.15);
-    border: 1px solid rgba(245, 158, 11, 0.25);
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.1);
-    flex-shrink: 0;
+    gap: 10px;
+    min-width: 0; /* Permite que o texto encolha */
 }
 
 .filter-text {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .filter-title {
     font-size: 13px;
-    font-weight: 500;
-    color: #fde68a;
-}
-
-.filter-title strong {
-    font-size: 15px;
-    font-weight: 800;
-    color: #fbbf24;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Corta o texto com "..." se for muito longo */
 }
 
 .filter-desc {
-    margin-top: 2px;
     font-size: 11px;
-    color: rgba(253, 230, 138, 0.6);
+    color: var(--text-muted);
 }
 
 /* Checkbox customizado dentro do banner */
@@ -381,11 +371,11 @@ header {
 }
 
 .group-name {
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
+    display: block;
+    max-width: 150px; /* Ajuste conforme necessário */
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Link clicável para abrir grupo */
