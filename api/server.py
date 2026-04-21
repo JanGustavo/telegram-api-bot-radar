@@ -397,7 +397,12 @@ def should_alert(text: str) -> tuple[bool, dict]:
 # 4. LÓGICA DO TELEGRAM (CLIENTE E MONITORAMENTO)
 # ===========================================================================
 
-SESSION_PATH = BASE_DIR / "sessions" / "users"
+# 1. Definimos a pasta e garantimos que ela existe (CRÍTICO PARA O DOCKER)
+SESSIONS_DIR = BASE_DIR / "sessions"
+SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+# 2. Caminho final. O Telethon adicionará automaticamente o ".session" no final
+SESSION_PATH = SESSIONS_DIR / "users"
 
 def create_client() -> TelegramClient:
     return TelegramClient(str(SESSION_PATH), api_id, api_hash)

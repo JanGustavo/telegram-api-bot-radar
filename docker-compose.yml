@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  promopulse-api:
+    build: .
+    container_name: promopulse_api
+    restart: unless-stopped # Se o Droplet reiniciar, a API volta sozinha
+    ports:
+      - "8000:8000"
+    volumes:
+      # O OURO ESTÁ AQUI: Mapeia a pasta local de sessões para dentro do contentor
+      - ./sessions:/app/sessions
+    env_file:
+      - .env

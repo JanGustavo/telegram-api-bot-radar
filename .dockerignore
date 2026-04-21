@@ -1,0 +1,22 @@
+# Ignorar ambientes virtuais locais
+venv/
+
+# Ignorar a extensão do Chrome (o servidor não precisa dela)
+extension/
+
+# Ignorar sessões locais antigas e arquivos soltos do Telethon
+sessions/
+*.session
+*.session-journal
+
+# Ignorar metadados do Git e GitHub Actions
+.git/
+.github/
+
+# Ignorar ficheiros de cache do Python
+__pycache__/
+*.pyc
+
+# Ignorar variáveis de ambiente locais e docs
+.env
+*.md
