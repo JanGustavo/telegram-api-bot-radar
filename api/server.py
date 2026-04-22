@@ -473,7 +473,11 @@ async def lifespan(app: FastAPI):
     await ensure_client_connected()
     yield
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title='PromoPulse API',
+    docs_url='/'
+    )
 
 # ---- Rotas de Status e Raiz ----
 @app.get("/")

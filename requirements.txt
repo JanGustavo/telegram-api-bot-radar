@@ -4,9 +4,3 @@ telethon
 pydantic
 python-dotenv
 pymongo
-asyncio
-re
-os
-unicodedata
-pathlib
-contextlib
