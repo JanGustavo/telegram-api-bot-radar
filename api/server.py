@@ -12,7 +12,13 @@ from telethon.errors.rpcerrorlist import (
     PhoneNumberInvalidError,
     SendCodeUnavailableError,
 )
-
+from api.models import (
+    PhoneRequest, LoginRequest, OfferRequest,
+    WatchConfigRequest, WatchConfigResponse,
+    StartWatchRequest, StartWatchResponse, StopWatchResponse, WatchStatusResponse,
+    AlertsResponse, OfferTestResponse,
+    GroupsResponse, FilterPreviewResponse,
+)
 # ===========================================================================
 # 1. CONFIGURAÇÕES E CONSTANTES
 # ===========================================================================
@@ -490,9 +496,9 @@ async def get_status():
 
 # ---- Rotas de Autenticação (Auth) ----
 @app.post("/send.code")
-async def send_code(data: dict):
+async def send_code(data: PhoneRequest):
     global phone_number, phone_code_hash
-    phone = (data.get("phone") or "").strip()
+    phone = (data.phone_number or "").strip()
     if not phone: raise HTTPException(status_code=400, detail="Telefone é obrigatorio.")
     if phone_number == phone and phone_code_hash: return {"status": "code already sent"}
     phone_number = phone
@@ -506,9 +512,9 @@ async def send_code(data: dict):
     except PhoneNumberInvalidError: raise HTTPException(status_code=400, detail="Numero invalido.")
 
 @app.post("/login")
-async def login(data: dict):
+async def login(data: LoginRequest):
     global phone_code_hash
-    code = (data.get("code") or "").strip()
+    code = (data.code or "").strip()
     if not code: raise HTTPException(status_code=400, detail="Codigo é obrigatorio.")
     if not phone_number: raise HTTPException(status_code=400, detail="Solicite o codigo antes.")
     await ensure_client_connected()
@@ -545,7 +551,7 @@ async def get_me():
     }
 
 # ---- Rotas de Grupos ----
-@app.get("/groups")
+@app.get("/groups", response_model=GroupsResponse)
 async def get_groups():
     await ensure_client_connected()
     if not await client.is_user_authorized(): return {"groups": []}
@@ -562,7 +568,7 @@ async def get_groups():
         })
     return {"groups": groups}
 
-@app.get("/groups/filter-preview")
+@app.get("/groups/filter-preview", response_model=FilterPreviewResponse)
 async def filter_preview():
     await ensure_client_connected()
     if not await client.is_user_authorized(): return {"groups": []}
@@ -581,15 +587,18 @@ async def filter_preview():
     return {"groups": result}
 
 # ---- Rotas de Configuração de Monitoramento ----
-@app.post("/watch/config")
-async def set_watch_config(data: dict):
-    WATCH_CONFIG["active_levels"] = data.get("active_levels", ["broad"])
-    WATCH_CONFIG["broad_categories"] = data.get("broad_categories", []) # <-- Lê a variável certa
-    WATCH_CONFIG["mid_categories"] = data.get("mid_categories", [])
-    WATCH_CONFIG["specific_models"] = [str(m) for m in data.get("specific_models", [])]
-    WATCH_CONFIG["mid_brands"] = [str(b) for b in data.get("mid_brands", [])]
-    WATCH_CONFIG["broad_keywords"] = [str(k) for k in data.get("broad_keywords", [])]
-    WATCH_CONFIG["price_max"] = data.get("price_max")
+@app.post("/watch/config", response_model=WatchConfigResponse)
+async def set_watch_config(data: WatchConfigRequest):
+    WATCH_CONFIG["active_levels"]   = data.active_levels
+    WATCH_CONFIG["broad_categories"] = data.broad_categories
+    WATCH_CONFIG["mid_categories"]   = data.mid_categories
+    WATCH_CONFIG["specific_models"]  = [str(m) for m in data.specific_models]
+    WATCH_CONFIG["mid_brands"]       = [str(b) for b in data.mid_brands]
+    WATCH_CONFIG["broad_keywords"]   = [str(k) for k in data.broad_keywords]
+    WATCH_CONFIG["price_max"]        = data.price_max
+    WATCH_CONFIG["min_score"]        = data.min_score
+    WATCH_CONFIG["require_offer_match"] = data.require_offer_match
+    WATCH_CONFIG["relaxed_mode"]     = data.relaxed_mode
     return {"status": "ok", "config": WATCH_CONFIG}
 
 @app.get("/watch/config")
@@ -597,19 +606,19 @@ async def get_watch_config():
     return {"config": WATCH_CONFIG}
 
 # ---- Rotas de Controle de Monitoramento ----
-@app.post("/watch/start")
-async def start_watch(data: dict):
+@app.post("/watch/start", response_model=StartWatchResponse)
+async def start_watch(data: StartWatchRequest):
     global monitoring_active, monitoring_task
     await ensure_client_connected()
     if not await client.is_user_authorized(): raise HTTPException(status_code=401, detail="Nao autenticado.")
-    if monitoring_active: return {"status": "already running"}
-    group_ids = data.get("group_ids", [])
+    if monitoring_active: return {"status": "already running", "groups": 0, "config": WATCH_CONFIG}
+    group_ids = data.group_ids
     if not group_ids: raise HTTPException(status_code=400, detail="Informe ao menos um grupo.")
     monitoring_active = True
     monitoring_task = asyncio.create_task(_run_monitoring(group_ids))
     return {"status": "monitoring started", "groups": len(group_ids), "config": WATCH_CONFIG}
 
-@app.post("/watch/stop")
+@app.post("/watch/stop", response_model=StopWatchResponse)
 async def stop_watch():
     global monitoring_active, monitoring_task
     if not monitoring_active: return {"status": "not running"}
@@ -622,14 +631,14 @@ async def stop_watch():
     client.remove_event_handler(None)
     return {"status": "monitoring stopped"}
 
-@app.get("/watch/status")
+@app.get("/watch/status", response_model=WatchStatusResponse)
 async def watch_status():
     return {
         "active": monitoring_active, "config": WATCH_CONFIG, "alerts_count": len(alert_history),
     }
 
 # ---- Rotas de Alertas ----
-@app.get("/alerts")
+@app.get("/alerts", response_model=AlertsResponse)
 async def get_alerts(limit: int = 50):
     return {"alerts": alert_history[-limit:]}
 
@@ -640,16 +649,16 @@ async def clear_alerts():
     return {"status": "cleared"}
 
 # ---- Rotas de Teste ----
-@app.post("/offers/test")
-async def test_offer(data: dict):
-    text = data.get("text", "")
+@app.post("/offers/test", response_model=OfferTestResponse)
+async def test_offer(data: OfferRequest):
+    text = data.text
     ok, meta = should_alert(text)
     score, categories = _offer_score(text)
     return {
         "would_alert": ok, "offer_score": score, "offer_categories": categories,
         "extracted_price": _extract_price(text),
-        "level_match": _matches_level(text, WATCH_CONFIG["level"]),
-        "current_level": WATCH_CONFIG["level"],
+        "level_match": any(_matches_level(text, lvl) for lvl in WATCH_CONFIG.get("active_levels", ["broad"])),
+        "current_level": ", ".join(WATCH_CONFIG.get("active_levels", ["broad"])),
     }
 
 # ===========================================================================
