@@ -1,7 +1,7 @@
 {
    "manifest_version": 3,
    "name": "Telegram PromoPulse",
-   "version": "1.1.0",
+   "version": "1.2.0",
    "description": "Extensão para autenticar e abrir o painel do Telegram PromoPulse.",
    "action": {
 	   "default_title": "Telegram PromoPulse",
@@ -20,5 +20,5 @@
 	   "128": "telegram_logo_128.png"
    },
    "permissions": ["storage", "tabs"],
-   "host_permissions": ["http://localhost:8000/*"]
+   "host_permissions": ["https://jangustavo.me/apis/promopulse/*"]
 }

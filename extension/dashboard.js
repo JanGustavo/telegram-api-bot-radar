@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://jangustavo.me/apis/promopulse";
 const STORAGE_KEY = "radarConfig";
 
 // ---------------------------------------------------------------------------
@@ -468,18 +468,32 @@ async function loadUser() {
   const userNode = document.getElementById("user");
   try {
     const res = await fetch(`${API_BASE_URL}/me`);
+    
+    // Se a API recusar o acesso (Não Autorizado), a sessão expirou ou é inválida
+    if (res.status === 401) {
+      await clearAuthSession(); // Limpa dados velhos
+      openLogin(); // Expulsa para o login
+      return false; 
+    }
+
     const data = await res.json();
-    if (data.logged) {
+    if (data.logged || data.first_name || data.username) {
       userNode.innerHTML = `
         <div class="user-badge">
           <div class="status-dot online"></div>
           <span>${data.first_name || data.username || "Usuário"}</span>
         </div>`;
+      return true;
     } else {
-      userNode.innerHTML = '<span class="status-text">Não autenticado</span>';
+      // API respondeu 200, mas disse que não está logado
+      await clearAuthSession();
+      openLogin();
+      return false;
     }
   } catch {
-    userNode.innerHTML = '<span class="status-text error">Erro de conexão</span>';
+    // Erro de rede (API offline). Permite ver o dashboard, mas avisa.
+    userNode.innerHTML = '<span class="status-text error">API Offline</span>';
+    return true; 
   }
 }
 
@@ -712,16 +726,37 @@ function renderLevelPanel() {
 // Init
 // ---------------------------------------------------------------------------
 async function init() {
+  // 1. BARREIRA RÁPIDA: Verifica se existe auth localmente
+  const auth = await new Promise((resolve) => {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      chrome.storage.local.get(["telegramAuth"], (res) => resolve(res.telegramAuth));
+    } else {
+      resolve(JSON.parse(localStorage.getItem("telegramAuth")));
+    }
+  });
+
+  // Se não tem registo local, nem carrega o resto. Vai para o login!
+  if (!auth || !auth.logged) {
+    openLogin();
+    return;
+  }
+
+  // 2. Se passou na primeira barreira, carrega a UI base
   await loadState();
   renderLevelPanel();
-  loadUser();
+
+  // 3. BARREIRA SEGURA: Confirma com a API se a sessão é real
+  const isSessionValid = await loadUser();
+  if (!isSessionValid) return; // Se não for válida, o loadUser já redirecionou e paramos aqui
+
+  // 4. Sessão validada! Carrega os dados pesados
   loadGroups();
   bindEvents();
   loadAlerts();
   renderMidBrands();
   if ("Notification" in window && Notification.permission !== "granted") {
-  Notification.requestPermission();
-}
+    Notification.requestPermission();
+  }
 }
 
 //obriga o carregamento do DOM antes de iniciar a aplicação

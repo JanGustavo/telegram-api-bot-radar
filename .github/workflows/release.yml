@@ -38,10 +38,10 @@ jobs:
       - name: Zipar a extensão
         run: |
           cd extension
-          zip -r ../PromoPulse-Extension-${{ github.ref_name }}.zip ./*
+          zip -r ../PromoPulse-Extension.zip ./*
 
       - name: Criar Release no GitHub
         uses: softprops/action-gh-release@v2
         with:
-          files: PromoPulse-Extension-${{ github.ref_name }}.zip
-          body: ${{ steps.changelog.outputs.clean_changelog }} # Usa o texto do changelog gerado na release!
+          files: PromoPulse-Extension.zip
+          body: ${{ steps.changelog.outputs.clean_changelog }}
