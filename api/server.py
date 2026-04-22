@@ -475,8 +475,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
-    title='PromoPulse API',
-    root_path="/apis/promopulse"
     )
 
 # ---- Rotas de Status e Raiz ----
