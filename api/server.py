@@ -661,6 +661,10 @@ async def test_offer(data: OfferRequest):
         "current_level": ", ".join(WATCH_CONFIG.get("active_levels", ["broad"])),
     }
 
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health_check():
+    return {"status": "healthy"}
 # ===========================================================================
 # 6. STARTUP / SHUTDOWN
 # ===========================================================================

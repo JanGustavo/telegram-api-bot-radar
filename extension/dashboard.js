@@ -84,6 +84,9 @@ async function saveState() {
     broad_keywords: state.broad_keywords,
     price_max: state.price_max,
     selectedGroupIds: [...state.selectedGroupIds],
+    min_score: state.min_score || 2,
+    require_offer_match: state.require_offer_match ?? true,
+    relaxed_mode: state.relaxed_mode ?? false,
   });
 }
 
@@ -102,6 +105,11 @@ async function loadState() {
   if (saved.broad_keywords) state.broad_keywords = saved.broad_keywords;
   if (saved.price_max) state.price_max = saved.price_max;
   if (saved.selectedGroupIds) state.selectedGroupIds = new Set(saved.selectedGroupIds);
+  
+  // Novos campos de filtro
+  state.min_score = saved.min_score || 2;
+  state.require_offer_match = saved.require_offer_match ?? true;
+  state.relaxed_mode = saved.relaxed_mode ?? false;
 }
 
 
@@ -267,17 +275,23 @@ async function testOfferText() {
 // ---------------------------------------------------------------------------
 async function pushConfigToApi() {
   try {
+    const body = {
+      active_levels: [...state.active_levels],
+      broad_categories: [...state.broad_categories],
+      mid_categories: [...state.mid_categories],
+      specific_models: state.specific_models,
+      mid_brands: [...state.mid_selected_brands, ...state.mid_brands],
+      broad_keywords: state.broad_keywords,
+      price_max: state.price_max,
+      min_score: state.min_score || 2,
+      require_offer_match: state.require_offer_match ?? true,
+      relaxed_mode: state.relaxed_mode ?? false,
+    };
+
     await fetch(`${API_BASE_URL}/watch/config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        active_levels: [...state.active_levels],
-        broad_categories: [...state.broad_categories],
-        specific_models: state.specific_models,
-        mid_brands: [...state.mid_selected_brands, ...state.mid_brands],
-        broad_keywords: state.broad_keywords,
-        price_max: state.price_max,
-      }),
+      body: JSON.stringify(body),
     });
   } catch {
     // API offline

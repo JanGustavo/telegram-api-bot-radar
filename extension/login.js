@@ -69,7 +69,13 @@ function setStatus(message, type = "info") {
 async function extractErrorMessage(response, fallbackMessage) {
   try {
     const data = await response.json();
-    return data?.detail || data?.message || fallbackMessage;
+    if (data?.detail) {
+      if (Array.isArray(data.detail)) {
+        return data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('; ');
+      }
+      return data.detail;
+    }
+    return data?.message || fallbackMessage;
   } catch {
     return fallbackMessage;
   }
@@ -97,7 +103,7 @@ async function sendCode() {
     const response = await fetch(`${API_BASE_URL}/send.code`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone_number: phone }),
     });
 
     if (!response.ok) {
