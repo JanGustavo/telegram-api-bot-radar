@@ -662,7 +662,7 @@ async def test_offer(data: OfferRequest):
     }
 
 
-@app.api_route("/health", methods=["GET", "HEAD"])
+@app.head("/health")
 async def health_check():
     return {"status": "healthy"}
 # ===========================================================================
