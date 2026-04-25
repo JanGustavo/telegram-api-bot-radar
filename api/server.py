@@ -306,16 +306,34 @@ def _offer_score(text: str) -> tuple[int, list[str]]:
     return score, matched_categories
 
 def _extract_price(text: str) -> float | None:
-    match = re.search(r"r\$\s*([\d\.,]+)", text, re.IGNORECASE)
-    if not match:
-        match = re.search(r"\b(\d{1,3}(\.\d{3})*(,\d{2})?)\b", text)
-    if match:
-        raw = match.group(1).replace(".", "").replace(",", ".")
+    prices = []
+    # 1. Busca todos os valores precedidos por R$
+    # Suporta R$ 1.234,56, R$1234,56, R$ 1234
+    matches = re.findall(r"r\$\s*([\d\.]+,\d{2}|[\d\.,]+)", text, re.IGNORECASE)
+    
+    for m in matches:
         try:
-            return float(raw)
+            # Limpeza robusta para padrão brasileiro
+            if ',' in m and '.' in m:
+                clean = m.replace('.', '').replace(',', '.')
+            elif ',' in m:
+                clean = m.replace(',', '.')
+            else:
+                clean = m
+            prices.append(float(clean))
         except ValueError:
-            return None
-    return None
+            continue
+            
+    if not prices:
+        # 2. Fallback para números puros se não achar símbolo de moeda
+        matches = re.findall(r"\b(\d{1,3}(?:\.\d{3})*(?,\d{2})?)\b", text)
+        for m in matches:
+             try:
+                 prices.append(float(m.replace('.', '').replace(',', '.')))
+             except ValueError: continue
+
+    # Retorna o menor preço encontrado (geralmente o promocional em ofertas)
+    return min(prices) if prices else None
 
 def _extract_payment_condition(text: str) -> str:
     match = re.search(r'\b (pix| no pix|  a vista |em\s*\d+x\s*sem juros)\b', text, re.IGNORECASE)
