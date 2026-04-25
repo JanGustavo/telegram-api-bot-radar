@@ -32,6 +32,7 @@ const state = {
   sound_enabled: true,
   sound_selected: "classic.mp3",
   sound_volume: 0.8,
+  smart_alert_enabled: true, // Sniper Mode
 };
 
 const BRANDS_MAP = {
@@ -104,6 +105,7 @@ async function saveState() {
     sound_enabled: state.sound_enabled,
     sound_selected: state.sound_selected,
     sound_volume: state.sound_volume,
+    smart_alert_enabled: state.smart_alert_enabled,
   });
 }
 
@@ -129,6 +131,7 @@ async function loadState() {
   state.sound_enabled = saved.sound_enabled ?? true;
   state.sound_selected = saved.sound_selected || "classic.mp3";
   state.sound_volume = saved.sound_volume ?? 0.8;
+  state.smart_alert_enabled = saved.smart_alert_enabled ?? true;
 
   if (saved.lastAlertId) lastAlertId = saved.lastAlertId;
 
@@ -147,21 +150,23 @@ function updateSoundUI() {
   
   const volume = document.getElementById("volumeRange");
   if (volume) volume.value = state.sound_volume;
+
+  const smartToggle = document.getElementById("smartAlertToggle");
+  if (smartToggle) smartToggle.checked = state.smart_alert_enabled;
 }
 
 /**
  * Toca o som de alerta.
- * Se o arquivo local não existir, usa a URL de fallback da CDN.
+ * @param {string} forcedSound - Nome do arquivo para forçar (ex: "urgent.mp3")
  */
-function playAlertSound() {
+function playAlertSound(forcedSound = null) {
   if (!state.sound_enabled) return;
   
   try {
-    const localPath = `assets/sounds/${state.sound_selected}`;
-    const fallbackUrl = SOUND_SOURCES[state.sound_selected];
+    const soundFile = forcedSound || state.sound_selected;
+    const localPath = `assets/sounds/${soundFile}`;
+    const fallbackUrl = SOUND_SOURCES[soundFile];
     
-    // Tenta primeiro o local (extensão), se falhar o catch não ajuda muito no 404 de rede, 
-    // então aqui usamos uma lógica de tentativa e erro ou apenas o fallback por enquanto
     const audioUrl = (typeof chrome !== "undefined" && chrome.runtime?.getURL) 
       ? chrome.runtime.getURL(localPath) 
       : fallbackUrl;
@@ -173,9 +178,8 @@ function playAlertSound() {
     
     if (playPromise !== undefined) {
       playPromise.catch(err => {
-        // Se falhou o local (404), tenta o fallback global
         if (audioUrl.startsWith('chrome-extension')) {
-          console.log("[Audio] Arquivo local não encontrado, usando fallback CDN...");
+          console.log("[Audio] Usando fallback CDN para " + soundFile);
           const retryAudio = new Audio(fallbackUrl);
           retryAudio.volume = state.sound_volume;
           retryAudio.play().catch(e => console.warn("Autoplay bloqueado:", e));
@@ -417,10 +421,8 @@ async function toggleScanner() {
     monitoringActive = true;
     setScannerState(true);
     
-    // PRIME O ÁUDIO: Aproveita o clique no botão para dar a permissão inicial
+    // PRIME O ÁUDIO
     audioContextPrimed = true;
-    console.log("[Audio] Sistema de áudio liberado pelo clique do usuário.");
-    
   } catch {
     showToast("Erro ao iniciar monitoramento. API está rodando?", "error");
   } finally {
@@ -493,8 +495,15 @@ async function loadAlerts() {
         const price = a.extracted_price
           ? `R$ ${Number(a.extracted_price).toLocaleString("pt-BR")}`
           : "";
+        
+        // --- Sniper Mode Visual ---
+        let isCritical = false;
+        if (state.smart_alert_enabled && state.price_max && a.extracted_price) {
+            if (a.extracted_price <= (state.price_max * 0.6)) isCritical = true;
+        }
+
         return `
-        <div class="alert-item">
+        <div class="alert-item ${isCritical ? 'critical' : ''}">
           <div class="alert-header">
            ${
              a.link
@@ -686,7 +695,7 @@ function bindEvents() {
   document.getElementById("toggleSoundBtn")?.addEventListener("click", async () => {
     state.sound_enabled = !state.sound_enabled;
     updateSoundUI();
-    audioContextPrimed = true; // Libera som no clique
+    audioContextPrimed = true;
     if (state.sound_enabled) playAlertSound(); 
     await saveState();
   });
@@ -710,6 +719,13 @@ function bindEvents() {
   document.getElementById("testSoundBtn")?.addEventListener("click", () => {
     audioContextPrimed = true;
     playAlertSound();
+  });
+
+  // --- SNIPER MODE TOGGLE ---
+  document.getElementById("smartAlertToggle")?.addEventListener("change", async (e) => {
+      state.smart_alert_enabled = e.target.checked;
+      await saveState();
+      loadAlerts(); // Re-renderiza para aplicar/remover estilos
   });
 
   document.querySelectorAll(".cat-card").forEach((card) => {
@@ -745,7 +761,17 @@ function notify(alert){
       };
     }
   }
-  playAlertSound();
+  
+  // LÓGICA DE SOM INTELIGENTE
+  let soundToPlay = null;
+  if (state.smart_alert_enabled && state.price_max && alert.extracted_price) {
+    const threshold = state.price_max * 0.6; 
+    if (alert.extracted_price <= threshold) {
+      soundToPlay = "urgent.mp3";
+    }
+  }
+
+  playAlertSound(soundToPlay);
 }
 
 function renderLevelPanel() {

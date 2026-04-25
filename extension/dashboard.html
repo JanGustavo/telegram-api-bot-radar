@@ -273,7 +273,7 @@
             </div>
           </div>
 
-          <!-- Configurações de Som (Expansível ou Compacto) -->
+          <!-- Configurações de Som -->
           <div class="sound-settings-bar">
             <select id="soundSelect" class="sound-select-compact">
               <option value="classic.mp3">Som: Clássico</option>
@@ -282,6 +282,18 @@
             </select>
             <input type="range" id="volumeRange" min="0" max="1" step="0.1" value="0.8" class="volume-slider">
             <button id="testSoundBtn" class="btn-small btn-icon" title="Testar Som" style="margin-left: 4px; font-size: 12px;">▶️</button>
+          </div>
+
+          <!-- Smart Alert Toggle explicativo -->
+          <div class="smart-alert-bar">
+            <div class="smart-info">
+              <span class="smart-title">🔥 Sniper Mode</span>
+              <span class="smart-desc">Destacar e forçar som urgente se desconto for > 40%</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="smartAlertToggle" checked>
+              <span class="slider"></span>
+            </label>
           </div>
 
           <div id="alertsList" class="scroll-area">
