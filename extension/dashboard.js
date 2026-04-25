@@ -88,6 +88,7 @@ async function saveState() {
     require_offer_match: state.require_offer_match ?? true,
     relaxed_mode: state.relaxed_mode ?? false,
     lastAlertId: lastAlertId,
+    has_configured_groups: state.has_configured_groups ?? false,
   });
 }
 
@@ -111,6 +112,7 @@ async function loadState() {
   state.min_score = saved.min_score || 2;
   state.require_offer_match = saved.require_offer_match ?? true;
   state.relaxed_mode = saved.relaxed_mode ?? false;
+  state.has_configured_groups = saved.has_configured_groups ?? false;
 
   if (saved.lastAlertId) lastAlertId = saved.lastAlertId;
 }
@@ -227,6 +229,7 @@ function renderGroups() {
       } else {
         state.selectedGroupIds.delete(id);
       }
+      state.has_configured_groups = true; // QA: Ativa a persistência manual
       saveState();
     });
   });
@@ -414,14 +417,21 @@ async function loadAlerts() {
   try {
     const res = await fetch(`${API_BASE_URL}/alerts?limit=30`);
     const data = await res.json();
-    const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+    const rawAlerts = Array.isArray(data.alerts) ? data.alerts : [];
 
-    if (alerts.length === 0) {
+    if (rawAlerts.length === 0) {
       node.innerHTML = '<div class="empty-state">Nenhum alerta ainda.</div>';
       return;
     }
 
-
+    // QA: DEDUPLICAÇÃO NO FRONTEND (Garante que nunca veremos duplicados na UI)
+    const seenIds = new Set();
+    const alerts = rawAlerts.filter(a => {
+      const id = `${a.group_id}_${a.message_id}`;
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
 
     // Mais recentes primeiro
     const sorted = [...alerts].reverse();
@@ -442,14 +452,14 @@ async function loadAlerts() {
         <div class="alert-item">
           <div class="alert-header">
            ${
-              a.link
-                ? `<a href="${a.link}" target="_blank" class="alert-group-link">
+             a.link
+               ? `<a href="${a.link}" target="_blank" class="alert-group-link">
                   🔗 ${escapeHtml(a.group_title || a.group_id)}
             </a>`
                : `<span class="alert-group">
          ${escapeHtml(a.group_title || a.group_id)}
        </span>`
-}
+           }
             ${price ? `<span class="alert-price">${price}</span>` : ""}
           </div>
           <p class="alert-text">${escapeHtml((a.message || "").slice(0, 200))}</p>
@@ -532,12 +542,17 @@ async function loadGroups() {
     const data = await res.json();
     allGroups = Array.isArray(data.groups) ? data.groups : [];
 
-    // Selecionar automaticamente os grupos não filtrados
-    allGroups.forEach((g) => {
-      if (!g.auto_filtered && !state.selectedGroupIds.has(g.id)) {
-        state.selectedGroupIds.add(g.id);
-      }
-    });
+    // LÓGICA DE QA: Só seleciona tudo automaticamente se o usuário NUNCA mexeu nos grupos.
+    if (!state.has_configured_groups) {
+      console.log("[QA] Primeira carga detectada. Selecionando todos os grupos válidos.");
+      allGroups.forEach((g) => {
+        if (!g.auto_filtered && !state.selectedGroupIds.has(g.id)) {
+          state.selectedGroupIds.add(g.id);
+        }
+      });
+    } else {
+      console.log("[QA] Usuário recorrente. Respeitando seleção persistida:", [...state.selectedGroupIds]);
+    }
 
     renderGroups();
   } catch {

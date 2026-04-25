@@ -19,6 +19,7 @@ from api.models import (
     AlertsResponse, OfferTestResponse,
     GroupsResponse, FilterPreviewResponse,
 )
+
 # ===========================================================================
 # 1. CONFIGURAÇÕES E CONSTANTES
 # ===========================================================================
@@ -120,12 +121,15 @@ GROUP_QUALITY_BLOCKLIST: list[re.Pattern] = [re.compile(p, re.IGNORECASE) for p 
 # ---- Configuração de Monitoramento ----
 WATCH_CONFIG = {
     "active_levels": ["broad"],
-    "broad_categories": ["celulares"], # <-- Nome atualizado
-    "mid_categories": [],              # <-- Memória para Nível Marcas
+    "broad_categories": ["celulares"],
+    "mid_categories": [],
     "specific_models": [],
     "mid_brands": [],
     "broad_keywords": [],
-    "price_max": None
+    "price_max": None,
+    "min_score": 2,
+    "require_offer_match": True,
+    "relaxed_mode": False
 }
 
 # ---- Estado Global ----
@@ -134,6 +138,8 @@ monitoring_task = None
 alert_history = []
 phone_number = None
 phone_code_hash = None
+active_group_ids = set()
+processed_msg_ids = set()
 
 # ===========================================================================
 # 2. REGRAS DE CATEGORIAS E OFERTAS
@@ -269,25 +275,18 @@ def _validate_category(text: str, category: str) -> bool:
     rules = CATEGORY_RULES.get(category)
     if not rules:
         return False
-    print(f"\n[🔍 ANALISANDO CATEGORIA: {category.upper()}]", flush=True)
     t_clean = _remove_accents(text.lower())
     for exc in rules.get("exclude", []):
         if re.search(exc, t_clean):
-            print(f" ❌ BLOQUEADO: Contém exclusão '{exc}'", flush=True)
             return False
     for kw in rules.get("strong_keywords", []):
         if re.search(kw, t_clean):
-            print(f" ✅ APROVADO: Identificador forte '{kw}'", flush=True)
             return True
     for b in rules.get("ambiguous_brands", []):
         if re.search(b, t_clean):
-            print(f" ⚠️ ATENÇÃO: Marca ambígua '{b}'. Buscando contexto...", flush=True)
             for mod in rules.get("context_modifiers", []):
                 if re.search(mod, t_clean):
-                    print(f" ✅ APROVADO: Modificador '{mod}' validou '{b}'!", flush=True)
                     return True
-            print(f" ❌ REJEITADO: Marca '{b}' sem contexto (falso positivo).", flush=True)
-    print(f" ➖ IGNORADO: Texto não pertence a {category.upper()}.", flush=True)
     return False
 
 def _offer_score(text: str) -> tuple[int, list[str]]:
@@ -307,13 +306,9 @@ def _offer_score(text: str) -> tuple[int, list[str]]:
 
 def _extract_price(text: str) -> float | None:
     prices = []
-    # 1. Busca todos os valores precedidos por R$
-    # Suporta R$ 1.234,56, R$1234,56, R$ 1234
     matches = re.findall(r"r\$\s*([\d\.]+,\d{2}|[\d\.,]+)", text, re.IGNORECASE)
-    
     for m in matches:
         try:
-            # Limpeza robusta para padrão brasileiro
             if ',' in m and '.' in m:
                 clean = m.replace('.', '').replace(',', '.')
             elif ',' in m:
@@ -323,16 +318,12 @@ def _extract_price(text: str) -> float | None:
             prices.append(float(clean))
         except ValueError:
             continue
-            
     if not prices:
-        # 2. Fallback para números puros se não achar símbolo de moeda
         matches = re.findall(r"\b(\d{1,3}(?:\.\d{3})*(?,\d{2})?)\b", text)
         for m in matches:
              try:
                  prices.append(float(m.replace('.', '').replace(',', '.')))
              except ValueError: continue
-
-    # Retorna o menor preço encontrado (geralmente o promocional em ofertas)
     return min(prices) if prices else None
 
 def _extract_payment_condition(text: str) -> str:
@@ -344,7 +335,7 @@ def _clean_product_name(text: str) -> str:
     triggers = [
         r"NGM MERECE COMER MARMITA FRIA", r"VOCE NAO CANSA DE TREINAR FOFO",
         r"MEU NUTRI DISSE PRA EU ADICIONAR MAIS FRUTAS", r"CERVEJA DE QUEM TRABALHA NO SABADO",
-        r"PERFEITA PRA VC ENCHER DE AGUA E OVO", r"JA TOMOU SUA CREATINA HOJE",
+        r"PERFEITA PRA VC ENCHER DE AGUA E OVO", r"JA TOMOU SUA CREATINA HUJE",
         r"CHEGA DE PANELA NA GELADEIRA", r"SO JARDINEIRO GOSTA DE MATO ALTO",
         r"QUAL SUA DESCULPA PRA FICAR SEM CUECA", r"PROIBIDO ESQUENTAR PAO NO MICROONDAS",
         r"PRA ENCHER DE GORO", r"PRO DIA A DIA ESSE E ABSURDO",
@@ -366,38 +357,23 @@ def _clean_product_name(text: str) -> str:
 
 def _matches_level(text: str, level: str) -> bool:
     t_clean = _remove_accents(text.lower())
-    
-    # -----------------------------------------------------
-    # NÍVEL 1: AMPLO (Busca por Categorias Inteiras)
     if level == "broad":
-        active_cats = WATCH_CONFIG.get("broad_categories", []) # <--- A MÁGICA ESTÁ AQUI
-        
-        if not active_cats:
-            return False
-
+        active_cats = WATCH_CONFIG.get("broad_categories", [])
+        if not active_cats: return False
         for cat in active_cats:
-            if _validate_category(text, cat):
-                return True
-                
-        # Se não achou a categoria, testa palavras-chave extras do usuário
+            if _validate_category(text, cat): return True
         extra_kws = WATCH_CONFIG.get("broad_keywords", [])
         for kw in extra_kws:
             kw_clean = _remove_accents(kw.lower())
-            if re.search(rf"\b{re.escape(kw_clean)}\b", t_clean):
-                return True
-                
+            if re.search(rf"\b{re.escape(kw_clean)}\b", t_clean): return True
         return False
+    return False
 
 def should_alert(text: str) -> tuple[bool, dict]:
     price_max = WATCH_CONFIG.get("price_max")
     active_levels = WATCH_CONFIG.get("active_levels", ["broad"])
-    level_match = False
-    for lvl in active_levels:
-        if _matches_level(text, lvl):
-            level_match = True
-            break
-    if not level_match:
-        return False, {}
+    level_match = any(_matches_level(text, lvl) for lvl in active_levels)
+    if not level_match: return False, {}
     score, categories = _offer_score(text)
     min_score = WATCH_CONFIG.get("min_score", 2)
     relaxed = WATCH_CONFIG.get("relaxed_mode", False)
@@ -411,21 +387,16 @@ def should_alert(text: str) -> tuple[bool, dict]:
     if price_max and extracted_price and extracted_price > price_max:
         return False, {}
     return True, {
-        "offer_score": score,
-        "offer_categories": categories,
-        "extracted_price": extracted_price,
-        "payment_condition": _extract_payment_condition(text),
+        "offer_score": score, "offer_categories": categories,
+        "extracted_price": extracted_price, "payment_condition": _extract_payment_condition(text),
     }
 
 # ===========================================================================
 # 4. LÓGICA DO TELEGRAM (CLIENTE E MONITORAMENTO)
 # ===========================================================================
 
-# 1. Definimos a pasta e garantimos que ela existe (CRÍTICO PARA O DOCKER)
 SESSIONS_DIR = BASE_DIR / "sessions"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
-
-# 2. Caminho final. O Telethon adicionará automaticamente o ".session" no final
 SESSION_PATH = SESSIONS_DIR / "users"
 
 def create_client() -> TelegramClient:
@@ -434,58 +405,51 @@ def create_client() -> TelegramClient:
 client = create_client()
 client_lock = asyncio.Lock()
 
+# QA: HANDLER ÚNICO E GLOBAL - Registrado uma única vez no startup
+@client.on(events.NewMessage())
+async def global_message_handler(event):
+    global alert_history, processed_msg_ids
+    if not monitoring_active: return
+    chat_id = event.chat_id
+    msg_id = event.message.id
+    if msg_id in processed_msg_ids: return
+    self_monitor = WATCH_CONFIG.get("self_monitor", False)
+    is_self = event.is_private and event.sender_id == (await client.get_me()).id
+    if not (chat_id in active_group_ids or (self_monitor and is_self)): return
+    text = event.message.message or ""
+    ok, meta = should_alert(text)
+    if ok:
+        processed_msg_ids.add(msg_id)
+        if len(processed_msg_ids) > 1000: processed_msg_ids.remove(next(iter(processed_msg_ids)))
+        chat = await event.get_chat()
+        username = getattr(chat, "username", None)
+        if username: msg_link = f"https://t.me/{username}/{msg_id}"
+        elif str(chat_id).startswith("-100"): msg_link = f"https://t.me/c/{str(chat_id)[4:]}/{msg_id}"
+        else: msg_link = None
+        alert_history.append({
+            "group_id": chat_id, "group_title": getattr(chat, "title", "Saved Messages"),
+            "username": username if not is_self else None, "message": text[:500],
+            "message_id": msg_id, "offer_score": meta.get("offer_score"),
+            "offer_categories": meta.get("offer_categories"), "extracted_price": meta.get("extracted_price"),
+            "link": msg_link, "clean_title": _clean_product_name(text),
+        })
+        print(f"ALERTA: {chat_id} - {getattr(chat, 'title', 'Saved Messages')} - {text[:100]}...")
+        if len(alert_history) > 200: alert_history[:] = alert_history[-200:]
+
 async def ensure_client_connected() -> None:
     global client
     async with client_lock:
-        if client.is_connected():
-            return
-        try:
-            await client.connect()
+        if client.is_connected(): return
+        try: await client.connect()
         except ValueError as error:
-            if "cannot be reused after logging out" not in str(error):
-                raise
+            if "cannot be reused after logging out" not in str(error): raise
             client = create_client()
             await client.connect()
-        if not client.is_connected():
-            raise HTTPException(status_code=503, detail="Nao foi possivel conectar na API do Telegram.")
+        if not client.is_connected(): raise HTTPException(status_code=503, detail="Nao conectado ao Telegram.")
 
 async def _run_monitoring(group_ids: list[int]) -> None:
-    global alert_history
-    @client.on(events.NewMessage())
-    async def handler(event):
-        text = event.message.message or ""
-        chat_id = event.chat_id
-        self_monitor = WATCH_CONFIG.get("self_monitor", False)
-        is_self = event.is_private and event.sender_id == (await client.get_me()).id
-        is_selected_group = chat_id in group_ids
-        if not (is_selected_group or (self_monitor and is_self)):
-            return
-        ok, meta = should_alert(text)
-        if ok:
-            chat = await event.get_chat()
-            username = getattr(chat, "username", None)
-            if username:
-                msg_link = f"https://t.me/{username}/{event.message.id}"
-            elif str(chat_id).startswith("-100"):
-                clean_id = str(chat_id)[4:]
-                msg_link = f"https://t.me/c/{clean_id}/{event.message.id}"
-            else:
-                msg_link = None
-            alert_history.append({
-                "group_id": chat_id,
-                "group_title": getattr(chat, "title", "Saved Messages"),
-                "username": username if not is_self else None,
-                "message": text[:500],
-                "message_id": event.message.id,
-                "offer_score": meta.get("offer_score"),
-                "offer_categories": meta.get("offer_categories"),
-                "extracted_price": meta.get("extracted_price"),
-                "link": msg_link,
-                "clean_title": _clean_product_name(text),
-            })
-            print(f"ALERTA: {chat_id} - {chat.title if hasattr(chat, 'title') else 'Saved Messages'} - {text[:100]}...")
-            if len(alert_history) > 200:
-                alert_history[:] = alert_history[-200:]
+    global active_group_ids
+    active_group_ids = set(group_ids)
     await client.run_until_disconnected()
 
 # ===========================================================================
@@ -497,65 +461,39 @@ async def lifespan(app: FastAPI):
     await ensure_client_connected()
     yield
 
-app = FastAPI(
-    lifespan=lifespan,
-    title="PromoPulse API",
-    root_path="/apis/promopulse"
-)
+app = FastAPI(lifespan=lifespan, title="PromoPulse API", root_path="/apis/promopulse")
 
-# ---- Rotas de Status e Raiz ----
 @app.get("/")
-async def root():
-    return {"status": "ok"}
+async def root(): return {"status": "ok"}
 
-@app.get("/status")
-async def get_status():
-    return {"status": "online", "client_connected": client.is_connected() if client else False}
-
-# ---- Rotas de Autenticação (Auth) ----
 @app.post("/send.code")
 async def send_code(data: PhoneRequest):
     global phone_number, phone_code_hash
     phone = (data.phone_number or "").strip()
-    if not phone: raise HTTPException(status_code=400, detail="Telefone é obrigatorio.")
-    if phone_number == phone and phone_code_hash: return {"status": "code already sent"}
+    if not phone: raise HTTPException(status_code=400, detail="Telefone obrigatorio.")
     phone_number = phone
     await ensure_client_connected()
     try:
         result = await client.send_code_request(phone_number)
         phone_code_hash = result.phone_code_hash
         return {"status": "code sent"}
-    except ConnectionError: raise HTTPException(status_code=503, detail="Telegram desconectado.")
-    except SendCodeUnavailableError: raise HTTPException(status_code=429, detail="Limite de envio atingido.")
-    except PhoneNumberInvalidError: raise HTTPException(status_code=400, detail="Numero invalido.")
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/login")
 async def login(data: LoginRequest):
     global phone_code_hash
-    code = (data.code or "").strip()
-    if not code: raise HTTPException(status_code=400, detail="Codigo é obrigatorio.")
-    if not phone_number: raise HTTPException(status_code=400, detail="Solicite o codigo antes.")
+    if not data.code: raise HTTPException(status_code=400, detail="Codigo obrigatorio.")
     await ensure_client_connected()
     try:
-        await client.sign_in(phone=phone_number, code=code, phone_code_hash=phone_code_hash)
+        await client.sign_in(phone=phone_number, code=data.code, phone_code_hash=phone_code_hash)
         phone_code_hash = None
         return {"status": "logged"}
-    except ConnectionError: raise HTTPException(status_code=503, detail="Telegram desconectado.")
-    except PhoneCodeInvalidError: raise HTTPException(status_code=400, detail="Codigo invalido.")
-    except SessionPasswordNeededError: raise HTTPException(status_code=400, detail="Conta requer 2FA.")
+    except Exception as e: raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/logout")
 async def logout():
-    global client, phone_number, phone_code_hash
     await ensure_client_connected()
-    if not await client.is_user_authorized():
-        phone_number = None
-        phone_code_hash = None
-        return {"status": "not logged"}
     await client.log_out()
-    client = create_client()
-    phone_number = None
-    phone_code_hash = None
     return {"status": "logged out"}
 
 @app.get("/me")
@@ -563,12 +501,8 @@ async def get_me():
     await ensure_client_connected()
     if not await client.is_user_authorized(): return {"logged": False}
     me = await client.get_me()
-    return {
-        "logged": True, "id": me.id, "first_name": me.first_name,
-        "last_name": me.last_name, "username": me.username, "phone": me.phone,
-    }
+    return {"logged": True, "first_name": me.first_name, "username": me.username}
 
-# ---- Rotas de Grupos ----
 @app.get("/groups", response_model=GroupsResponse)
 async def get_groups():
     await ensure_client_connected()
@@ -577,88 +511,41 @@ async def get_groups():
     groups = []
     for d in dialogs:
         if not (d.is_group or d.is_channel): continue
-        title = d.title or ""
-        passed = group_passes_quality_filter(title)
+        passed = group_passes_quality_filter(d.title or "")
         groups.append({
-            "id": d.id, "title": title, "username": getattr(d.entity, "username", None), 
+            "id": d.id, "title": d.title, "username": getattr(d.entity, "username", None),
             "link": f"https://t.me/{d.entity.username}" if getattr(d.entity, "username", None) else None,
             "auto_filtered": not passed,
         })
     return {"groups": groups}
 
-@app.get("/groups/filter-preview", response_model=FilterPreviewResponse)
-async def filter_preview():
-    await ensure_client_connected()
-    if not await client.is_user_authorized(): return {"groups": []}
-    dialogs = await client.get_dialogs()
-    result = []
-    for d in dialogs:
-        if not (d.is_group or d.is_channel): continue
-        title = d.title or ""
-        blocked_by = []
-        for pattern in GROUP_QUALITY_BLOCKLIST:
-            if pattern.search(title): blocked_by.append(pattern.pattern)
-        if not blocked_by and _is_spam_name(title): blocked_by.append("spam_name_heuristic")
-        result.append({
-            "id": d.id, "title": title, "auto_filtered": len(blocked_by) > 0, "blocked_by": blocked_by,
-        })
-    return {"groups": result}
-
-# ---- Rotas de Configuração de Monitoramento ----
 @app.post("/watch/config", response_model=WatchConfigResponse)
 async def set_watch_config(data: WatchConfigRequest):
-    WATCH_CONFIG["active_levels"]   = data.active_levels
-    WATCH_CONFIG["broad_categories"] = data.broad_categories
-    WATCH_CONFIG["mid_categories"]   = data.mid_categories
-    WATCH_CONFIG["specific_models"]  = [str(m) for m in data.specific_models]
-    WATCH_CONFIG["mid_brands"]       = [str(b) for b in data.mid_brands]
-    WATCH_CONFIG["broad_keywords"]   = [str(k) for k in data.broad_keywords]
-    WATCH_CONFIG["price_max"]        = data.price_max
-    WATCH_CONFIG["min_score"]        = data.min_score
-    WATCH_CONFIG["require_offer_match"] = data.require_offer_match
-    WATCH_CONFIG["relaxed_mode"]     = data.relaxed_mode
+    for k, v in data.dict().items(): WATCH_CONFIG[k] = v
     return {"status": "ok", "config": WATCH_CONFIG}
 
-@app.get("/watch/config")
-async def get_watch_config():
-    return {"config": WATCH_CONFIG}
+@app.get("/watch/status", response_model=WatchStatusResponse)
+async def watch_status():
+    return {"active": monitoring_active, "config": WATCH_CONFIG, "alerts_count": len(alert_history)}
 
-# ---- Rotas de Controle de Monitoramento ----
 @app.post("/watch/start", response_model=StartWatchResponse)
 async def start_watch(data: StartWatchRequest):
     global monitoring_active, monitoring_task
     await ensure_client_connected()
-    if not await client.is_user_authorized(): raise HTTPException(status_code=401, detail="Nao autenticado.")
     if monitoring_active: return {"status": "already running", "groups": 0, "config": WATCH_CONFIG}
-    group_ids = data.group_ids
-    if not group_ids: raise HTTPException(status_code=400, detail="Informe ao menos um grupo.")
     monitoring_active = True
-    monitoring_task = asyncio.create_task(_run_monitoring(group_ids))
-    return {"status": "monitoring started", "groups": len(group_ids), "config": WATCH_CONFIG}
+    monitoring_task = asyncio.create_task(_run_monitoring(data.group_ids))
+    return {"status": "monitoring started", "groups": len(data.group_ids), "config": WATCH_CONFIG}
 
 @app.post("/watch/stop", response_model=StopWatchResponse)
 async def stop_watch():
     global monitoring_active, monitoring_task
-    if not monitoring_active: return {"status": "not running"}
-    if monitoring_task and not monitoring_task.done():
-        monitoring_task.cancel()
-        try: await monitoring_task
-        except asyncio.CancelledError: pass
     monitoring_active = False
-    monitoring_task = None
-    client.remove_event_handler(None)
+    if monitoring_task: monitoring_task.cancel()
     return {"status": "monitoring stopped"}
 
-@app.get("/watch/status", response_model=WatchStatusResponse)
-async def watch_status():
-    return {
-        "active": monitoring_active, "config": WATCH_CONFIG, "alerts_count": len(alert_history),
-    }
-
-# ---- Rotas de Alertas ----
 @app.get("/alerts", response_model=AlertsResponse)
-async def get_alerts(limit: int = 50):
-    return {"alerts": alert_history[-limit:]}
+async def get_alerts(limit: int = 50): return {"alerts": alert_history[-limit:]}
 
 @app.delete("/alerts")
 async def clear_alerts():
@@ -666,34 +553,19 @@ async def clear_alerts():
     alert_history = []
     return {"status": "cleared"}
 
-# ---- Rotas de Teste ----
 @app.post("/offers/test", response_model=OfferTestResponse)
 async def test_offer(data: OfferRequest):
-    text = data.text
-    ok, meta = should_alert(text)
-    score, categories = _offer_score(text)
+    ok, meta = should_alert(data.text)
+    score, categories = _offer_score(data.text)
     return {
         "would_alert": ok, "offer_score": score, "offer_categories": categories,
-        "extracted_price": _extract_price(text),
-        "level_match": any(_matches_level(text, lvl) for lvl in WATCH_CONFIG.get("active_levels", ["broad"])),
+        "extracted_price": _extract_price(data.text),
+        "level_match": any(_matches_level(data.text, lvl) for lvl in WATCH_CONFIG.get("active_levels", ["broad"])),
         "current_level": ", ".join(WATCH_CONFIG.get("active_levels", ["broad"])),
     }
 
-
 @app.head("/health")
-async def health_check():
-    return {"status": "healthy"}
-# ===========================================================================
-# 6. STARTUP / SHUTDOWN
-# ===========================================================================
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    global monitoring_task
-    if monitoring_task and not monitoring_task.done():
-        monitoring_task.cancel()
-    if client.is_connected():
-        await client.disconnect()
+async def health_check(): return {"status": "healthy"}
 
 if __name__ == "__main__":
     import uvicorn
