@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] - 2026-04-24
+
+### ✨ Resiliência e Persistência de Estado (F5)
+
+- **Mantimento de Funcionamento:** O radar agora sincroniza seu estado com o backend ao recarregar a página (F5). Se o monitoramento estiver ativo no servidor, a interface restaurará automaticamente o botão "Monitorando" e o polling de alertas.
+
+- **Persistência de Alertas:** Implementação de persistência local do `lastAlertId`. Ao atualizar o dashboard, o sistema não dispara notificações duplicadas para ofertas que o usuário já visualizou antes do refresh.
+
+- **Sincronização de Configurações:** Sincronização automática da lista de grupos monitorados entre o frontend e o backend durante a inicialização da sessão.
+
 ## [1.1.0] - 2026-04-20
 
 ### ✨ Novidades e Inteligência

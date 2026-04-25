@@ -87,6 +87,7 @@ async function saveState() {
     min_score: state.min_score || 2,
     require_offer_match: state.require_offer_match ?? true,
     relaxed_mode: state.relaxed_mode ?? false,
+    lastAlertId: lastAlertId,
   });
 }
 
@@ -110,6 +111,8 @@ async function loadState() {
   state.min_score = saved.min_score || 2;
   state.require_offer_match = saved.require_offer_match ?? true;
   state.relaxed_mode = saved.relaxed_mode ?? false;
+
+  if (saved.lastAlertId) lastAlertId = saved.lastAlertId;
 }
 
 
@@ -423,9 +426,10 @@ async function loadAlerts() {
     // Mais recentes primeiro
     const sorted = [...alerts].reverse();
     const latest = sorted[0];
-        if(latest && latest.message_id !== lastAlertId){
+    if (latest && latest.message_id !== lastAlertId) {
       notify(latest);
       lastAlertId = latest.message_id;
+      saveState(); // Salva instantaneamente para evitar repetição no F5
     }
 
     node.innerHTML = sorted
@@ -766,6 +770,28 @@ async function init() {
   // 4. Sessão validada! Carrega os dados pesados
   loadGroups();
   bindEvents();
+  
+  // 5. Sincroniza estado do monitoramento com o Backend (Resiliência a F5)
+  try {
+    const res = await fetch(`${API_BASE_URL}/watch/status`);
+    if (res.ok) {
+      const statusData = await res.json();
+      if (statusData.active) {
+        monitoringActive = true;
+        setScannerState(true);
+        startAlertsPolling();
+
+        // Sincroniza grupos se o backend tiver uma lista ativa
+        if (statusData.config?.group_ids && statusData.config.group_ids.length > 0) {
+          state.selectedGroupIds = new Set(statusData.config.group_ids);
+          saveState();
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar status do radar:", err);
+  }
+
   loadAlerts();
   renderMidBrands();
   if ("Notification" in window && Notification.permission !== "granted") {
