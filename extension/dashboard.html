@@ -267,8 +267,23 @@
         <div class="card">
           <div class="card-header">
             <h3>🔔 Alertas</h3>
-            <button id="clearAlertsBtn" class="btn-small">Limpar</button>
+            <div class="header-actions">
+              <button id="toggleSoundBtn" class="btn-small btn-icon" title="Alternar Som">🔊</button>
+              <button id="clearAlertsBtn" class="btn-small">Limpar</button>
+            </div>
           </div>
+
+          <!-- Configurações de Som (Expansível ou Compacto) -->
+          <div class="sound-settings-bar">
+            <select id="soundSelect" class="sound-select-compact">
+              <option value="classic.mp3">Som: Clássico</option>
+              <option value="discreet.mp3">Som: Discreto</option>
+              <option value="urgent.mp3">Som: Urgente</option>
+            </select>
+            <input type="range" id="volumeRange" min="0" max="1" step="0.1" value="0.8" class="volume-slider">
+            <button id="testSoundBtn" class="btn-small btn-icon" title="Testar Som" style="margin-left: 4px; font-size: 12px;">▶️</button>
+          </div>
+
           <div id="alertsList" class="scroll-area">
             <div class="empty-state">
               Nenhum alerta ainda.<br />Inicie o monitoramento.

@@ -2,26 +2,38 @@ const API_BASE_URL = "https://jangustavo.me/apis/promopulse";
 const STORAGE_KEY = "radarConfig";
 
 // ---------------------------------------------------------------------------
+// Configurações de Áudio (Fallback para URLs externas para teste imediato)
+// ---------------------------------------------------------------------------
+const SOUND_SOURCES = {
+  "classic.mp3": "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
+  "discreet.mp3": "https://actions.google.com/sounds/v1/notification/pop_ding.ogg",
+  "urgent.mp3": "https://actions.google.com/sounds/v1/alarms/alarm_clock_short.ogg"
+};
+
+// ---------------------------------------------------------------------------
 // Estado global
 // ---------------------------------------------------------------------------
 let allGroups = [];
 let monitoringActive = false;
 let lastAlertId = null;
+let audioContextPrimed = false; // Controle de permissão de áudio
 
 const state = {
   selectedGroupIds: new Set(),
-  broad_categories: new Set(["celulares"]), // Memória do painel Amplo
-  mid_categories: new Set(), // Memória do painel Marcas
+  broad_categories: new Set(["celulares"]),
+  mid_categories: new Set(),
   current_tab: "broad",
-  active_levels: new Set(["broad"]), // Níveis ativos (pode ser "broad", "mid", "specific")
+  active_levels: new Set(["broad"]),
   mid_selected_brands: new Set(),
   specific_models: [],
   mid_brands: [],
   broad_keywords: [],
   price_max: null,
+  sound_enabled: true,
+  sound_selected: "classic.mp3",
+  sound_volume: 0.8,
 };
 
-// Dicionário Inteligente de Marcas
 const BRANDS_MAP = {
   celulares: ["Apple", "Samsung", "Xiaomi", "Motorola", "Poco", "Realme", "Asus"],
   tvs: ["Samsung", "LG", "TCL", "Philips", "AOC", "Philco"],
@@ -35,7 +47,7 @@ const BRANDS_MAP = {
 };
 
 // ---------------------------------------------------------------------------
-// Storage helpers (chrome.storage ou localStorage)
+// Storage helpers
 // ---------------------------------------------------------------------------
 function storageSet(data) {
   return new Promise((resolve) => {
@@ -89,6 +101,9 @@ async function saveState() {
     relaxed_mode: state.relaxed_mode ?? false,
     lastAlertId: lastAlertId,
     has_configured_groups: state.has_configured_groups ?? false,
+    sound_enabled: state.sound_enabled,
+    sound_selected: state.sound_selected,
+    sound_volume: state.sound_volume,
   });
 }
 
@@ -96,8 +111,6 @@ async function loadState() {
   const saved = await storageGet();
   
   if (saved.active_levels) state.active_levels = new Set(saved.active_levels);
-  
-  // Transforma os arrays salvos de volta em Set (memória isolada)
   if (saved.broad_categories) state.broad_categories = new Set(saved.broad_categories);
   if (saved.mid_categories) state.mid_categories = new Set(saved.mid_categories);
   if (saved.mid_selected_brands) state.mid_selected_brands = new Set(saved.mid_selected_brands);
@@ -108,15 +121,71 @@ async function loadState() {
   if (saved.price_max) state.price_max = saved.price_max;
   if (saved.selectedGroupIds) state.selectedGroupIds = new Set(saved.selectedGroupIds);
   
-  // Novos campos de filtro
   state.min_score = saved.min_score || 2;
   state.require_offer_match = saved.require_offer_match ?? true;
   state.relaxed_mode = saved.relaxed_mode ?? false;
   state.has_configured_groups = saved.has_configured_groups ?? false;
 
+  state.sound_enabled = saved.sound_enabled ?? true;
+  state.sound_selected = saved.sound_selected || "classic.mp3";
+  state.sound_volume = saved.sound_volume ?? 0.8;
+
   if (saved.lastAlertId) lastAlertId = saved.lastAlertId;
+
+  updateSoundUI();
 }
 
+function updateSoundUI() {
+  const btn = document.getElementById("toggleSoundBtn");
+  if (btn) {
+    btn.innerHTML = state.sound_enabled ? "🔊" : "🔇";
+    btn.classList.toggle("active", state.sound_enabled);
+  }
+  
+  const select = document.getElementById("soundSelect");
+  if (select) select.value = state.sound_selected;
+  
+  const volume = document.getElementById("volumeRange");
+  if (volume) volume.value = state.sound_volume;
+}
+
+/**
+ * Toca o som de alerta.
+ * Se o arquivo local não existir, usa a URL de fallback da CDN.
+ */
+function playAlertSound() {
+  if (!state.sound_enabled) return;
+  
+  try {
+    const localPath = `assets/sounds/${state.sound_selected}`;
+    const fallbackUrl = SOUND_SOURCES[state.sound_selected];
+    
+    // Tenta primeiro o local (extensão), se falhar o catch não ajuda muito no 404 de rede, 
+    // então aqui usamos uma lógica de tentativa e erro ou apenas o fallback por enquanto
+    const audioUrl = (typeof chrome !== "undefined" && chrome.runtime?.getURL) 
+      ? chrome.runtime.getURL(localPath) 
+      : fallbackUrl;
+
+    const audio = new Audio(audioUrl);
+    audio.volume = state.sound_volume;
+    
+    const playPromise = audio.play();
+    
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        // Se falhou o local (404), tenta o fallback global
+        if (audioUrl.startsWith('chrome-extension')) {
+          console.log("[Audio] Arquivo local não encontrado, usando fallback CDN...");
+          const retryAudio = new Audio(fallbackUrl);
+          retryAudio.volume = state.sound_volume;
+          retryAudio.play().catch(e => console.warn("Autoplay bloqueado:", e));
+        }
+      });
+    }
+  } catch (e) {
+    console.error("Erro no motor de áudio:", e);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Utilitários
@@ -143,10 +212,11 @@ function openLogin() {
 }
 
 // ---------------------------------------------------------------------------
-// Renderizar grupos (com filtro automático visual)
+// Renderização
 // ---------------------------------------------------------------------------
 function renderGroups() {
   const node = document.getElementById("groups");
+  if (!node) return;
   const showFiltered = document.getElementById("showFilteredToggle")?.checked;
 
   let visible = allGroups.filter((g) => {
@@ -214,13 +284,11 @@ function renderGroups() {
 
   node.innerHTML = html;
 
-  // Re-bind toggle "mostrar filtrados"
   const showToggle = document.getElementById("showFilteredToggle");
   if (showToggle) {
     showToggle.addEventListener("change", renderGroups);
   }
 
-  // Bind nos switches de grupo
   node.querySelectorAll("input[data-group-id]").forEach((checkbox) => {
     checkbox.addEventListener("change", (e) => {
       const id = parseInt(e.target.getAttribute("data-group-id"));
@@ -229,20 +297,12 @@ function renderGroups() {
       } else {
         state.selectedGroupIds.delete(id);
       }
-      state.has_configured_groups = true; // QA: Ativa a persistência manual
+      state.has_configured_groups = true;
       saveState();
     });
   });
 }
 
-// ---------------------------------------------------------------------------
-// Renderizar painel de níveis
-// ---------------------------------------------------------------------------
-
-
-// ---------------------------------------------------------------------------
-// Testar oferta em tempo real
-// ---------------------------------------------------------------------------
 async function testOfferText() {
   const text = document.getElementById("offerTestInput").value.trim();
   const resultNode = document.getElementById("offerTestResult");
@@ -276,9 +336,6 @@ async function testOfferText() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sincronizar config com o backend
-// ---------------------------------------------------------------------------
 async function pushConfigToApi() {
   try {
     const body = {
@@ -299,45 +356,33 @@ async function pushConfigToApi() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-  } catch {
-    // API offline
-  }
+  } catch {}
 }
 
-// ---------------------------------------------------------------------------
-// Colher valores dos inputs do painel de nível
-// ---------------------------------------------------------------------------
 function collectLevelInputs() {
-  state.broad_keywords = document
-    .getElementById("broadKeywordsInput")
-    .value.split(",")
+  state.broad_keywords = (document.getElementById("broadKeywordsInput")?.value || "")
+    .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 
-  state.mid_brands = document
-    .getElementById("midBrandsInput")
-    .value.split(",")
+  state.mid_brands = (document.getElementById("midBrandsInput")?.value || "")
+    .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 
-  state.specific_models = document
-    .getElementById("specificModelsInput")
-    .value.split("\n")
+  state.specific_models = (document.getElementById("specificModelsInput")?.value || "")
+    .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const priceRaw = document.getElementById("priceMaxInput").value.replace(",", ".");
+  const priceRaw = document.getElementById("priceMaxInput")?.value.replace(",", ".");
   state.price_max = priceRaw ? parseFloat(priceRaw) : null;
 }
 
-// ---------------------------------------------------------------------------
-// Iniciar / Parar monitoramento
-// ---------------------------------------------------------------------------
 async function toggleScanner() {
   const btn = document.getElementById("startScannerBtn");
 
   if (monitoringActive) {
-    // PARAR
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Parando...';
     try {
@@ -349,7 +394,6 @@ async function toggleScanner() {
     return;
   }
 
-  // INICIAR
   collectLevelInputs();
   await saveState();
   await pushConfigToApi();
@@ -372,6 +416,11 @@ async function toggleScanner() {
     if (!res.ok) throw new Error();
     monitoringActive = true;
     setScannerState(true);
+    
+    // PRIME O ÁUDIO: Aproveita o clique no botão para dar a permissão inicial
+    audioContextPrimed = true;
+    console.log("[Audio] Sistema de áudio liberado pelo clique do usuário.");
+    
   } catch {
     showToast("Erro ao iniciar monitoramento. API está rodando?", "error");
   } finally {
@@ -381,6 +430,7 @@ async function toggleScanner() {
 
 function setScannerState(active) {
   const btn = document.getElementById("startScannerBtn");
+  if (!btn) return;
   if (active) {
     btn.classList.add("running");
     btn.style.background = "var(--success)";
@@ -396,9 +446,6 @@ function setScannerState(active) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Alertas (polling simples a cada 10s quando monitorando)
-// ---------------------------------------------------------------------------
 let alertsPollingInterval = null;
 
 function startAlertsPolling() {
@@ -424,7 +471,6 @@ async function loadAlerts() {
       return;
     }
 
-    // QA: DEDUPLICAÇÃO NO FRONTEND (Garante que nunca veremos duplicados na UI)
     const seenIds = new Set();
     const alerts = rawAlerts.filter(a => {
       const id = `${a.group_id}_${a.message_id}`;
@@ -433,13 +479,12 @@ async function loadAlerts() {
       return true;
     });
 
-    // Mais recentes primeiro
     const sorted = [...alerts].reverse();
     const latest = sorted[0];
     if (latest && latest.message_id !== lastAlertId) {
       notify(latest);
       lastAlertId = latest.message_id;
-      saveState(); // Salva instantaneamente para evitar repetição no F5
+      saveState();
     }
 
     node.innerHTML = sorted
@@ -474,9 +519,6 @@ async function loadAlerts() {
   } catch {}
 }
 
-// ---------------------------------------------------------------------------
-// Toast
-// ---------------------------------------------------------------------------
 function showToast(msg, type = "info") {
   const existing = document.getElementById("toast");
   if (existing) existing.remove();
@@ -489,18 +531,13 @@ function showToast(msg, type = "info") {
   setTimeout(() => toast.remove(), 3500);
 }
 
-// ---------------------------------------------------------------------------
-// Usuário / Logout
-// ---------------------------------------------------------------------------
 async function loadUser() {
   const userNode = document.getElementById("user");
   try {
     const res = await fetch(`${API_BASE_URL}/me`);
-    
-    // Se a API recusar o acesso (Não Autorizado), a sessão expirou ou é inválida
     if (res.status === 401) {
-      await clearAuthSession(); // Limpa dados velhos
-      openLogin(); // Expulsa para o login
+      await clearAuthSession();
+      openLogin();
       return false; 
     }
 
@@ -513,14 +550,12 @@ async function loadUser() {
         </div>`;
       return true;
     } else {
-      // API respondeu 200, mas disse que não está logado
       await clearAuthSession();
       openLogin();
       return false;
     }
   } catch {
-    // Erro de rede (API offline). Permite ver o dashboard, mas avisa.
-    userNode.innerHTML = '<span class="status-text error">API Offline</span>';
+    if (userNode) userNode.innerHTML = '<span class="status-text error">API Offline</span>';
     return true; 
   }
 }
@@ -535,6 +570,7 @@ async function logout() {
 
 async function loadGroups() {
   const node = document.getElementById("groups");
+  if (!node) return;
   node.innerHTML = '<div class="loading-spinner"><div class="spinner"></div> Carregando grupos...</div>';
   try {
     const res = await fetch(`${API_BASE_URL}/groups`);
@@ -542,16 +578,12 @@ async function loadGroups() {
     const data = await res.json();
     allGroups = Array.isArray(data.groups) ? data.groups : [];
 
-    // LÓGICA DE QA: Só seleciona tudo automaticamente se o usuário NUNCA mexeu nos grupos.
     if (!state.has_configured_groups) {
-      console.log("[QA] Primeira carga detectada. Selecionando todos os grupos válidos.");
       allGroups.forEach((g) => {
         if (!g.auto_filtered && !state.selectedGroupIds.has(g.id)) {
           state.selectedGroupIds.add(g.id);
         }
       });
-    } else {
-      console.log("[QA] Usuário recorrente. Respeitando seleção persistida:", [...state.selectedGroupIds]);
     }
 
     renderGroups();
@@ -560,17 +592,11 @@ async function loadGroups() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Event bindings
-// ---------------------------------------------------------------------------
-
 function renderMidBrands() {
   const container = document.getElementById("dynamicBrandSelect");
   if (!container) return;
 
   let availableBrands = new Set();
-  
-  // A MÁGICA ESTÁ AQUI: Garante que o loop só rode nas categorias que você clicou no painel Marcas!
   if (state.mid_categories && state.mid_categories.size > 0) {
     state.mid_categories.forEach(cat => {
       if (BRANDS_MAP[cat]) {
@@ -579,23 +605,18 @@ function renderMidBrands() {
     });
   }
 
-  // Se nenhuma categoria estiver clicada, mostra o aviso
   if (availableBrands.size === 0) {
     container.innerHTML = '<div class="empty-state" style="width:100%; padding:10px;">Selecione uma categoria acima para ver as marcas.</div>';
     return;
   }
 
-  // Ordena alfabeticamente e cria os botões
   const sortedBrands = Array.from(availableBrands).sort();
   container.innerHTML = "";
   
   sortedBrands.forEach(brand => {
     const btn = document.createElement("button");
-    // Verifica se a marca já tinha sido selecionada antes
     btn.className = `brand-pill ${state.mid_selected_brands.has(brand) ? "active" : ""}`;
     btn.textContent = brand;
-    
-    // O clique na bolha da marca
     btn.addEventListener("click", async () => {
       if (state.mid_selected_brands.has(brand)) {
         state.mid_selected_brands.delete(brand);
@@ -604,16 +625,13 @@ function renderMidBrands() {
       }
       btn.classList.toggle("active");
       await saveState();
-      await pushConfigToApi(); // Atualiza o radar em tempo real
+      await pushConfigToApi();
     });
-    
     container.appendChild(btn);
   });
 }
 
 function bindEvents() {
-  // Nível
- // --- ABAS (Mudam apenas a aba visual no painel) ---
   document.querySelectorAll(".level-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.current_tab = btn.dataset.level;
@@ -621,22 +639,17 @@ function bindEvents() {
     });
   });
 
-  // --- BOTÕES DE ATIVAÇÃO (Ligar/Desligar o Radar no Python) ---
   document.querySelectorAll(".btn-activate-level").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const lvl = btn.dataset.level;
-      if (state.active_levels.has(lvl)) {
-        state.active_levels.delete(lvl); // Pausa
-      } else {
-        state.active_levels.add(lvl); // Ativa
-      }
+      if (state.active_levels.has(lvl)) state.active_levels.delete(lvl);
+      else state.active_levels.add(lvl);
       renderLevelPanel();
       await saveState();
-      await pushConfigToApi(); // Envia pro servidor
+      await pushConfigToApi();
     });
   });
 
-  // Inputs de nível — auto-save ao desfocar
   ["broadKeywordsInput", "midBrandsInput", "specificModelsInput", "priceMaxInput"].forEach((id) => {
     document.getElementById(id)?.addEventListener("blur", async () => {
       collectLevelInputs();
@@ -644,8 +657,7 @@ function bindEvents() {
     });
   });
 
-  // Botão principal
-  document.getElementById("startScannerBtn").addEventListener("click", () => {
+  document.getElementById("startScannerBtn")?.addEventListener("click", () => {
     toggleScanner().then(() => {
       if (monitoringActive) {
         startAlertsPolling();
@@ -656,15 +668,8 @@ function bindEvents() {
     });
   });
 
-// ---------------------------------------------------------------------------
-// Renderização Visual
-// ---------------------------------------------------------------------------
+  document.getElementById("logoutBtn")?.addEventListener("click", logout);
 
-
-  // Logout
-  document.getElementById("logoutBtn").addEventListener("click", logout);
-
-  // Teste de oferta
   const testInput = document.getElementById("offerTestInput");
   let debounce;
   testInput?.addEventListener("input", () => {
@@ -672,17 +677,45 @@ function bindEvents() {
     debounce = setTimeout(testOfferText, 600);
   });
 
-  // Limpar alertas
   document.getElementById("clearAlertsBtn")?.addEventListener("click", async () => {
     await fetch(`${API_BASE_URL}/alerts`, { method: "DELETE" });
     loadAlerts();
   });
 
-// --- Cartões de Categoria (Totalmente Independentes) ---
+  // --- CONTROLES DE SOM ---
+  document.getElementById("toggleSoundBtn")?.addEventListener("click", async () => {
+    state.sound_enabled = !state.sound_enabled;
+    updateSoundUI();
+    audioContextPrimed = true; // Libera som no clique
+    if (state.sound_enabled) playAlertSound(); 
+    await saveState();
+  });
+
+  document.getElementById("soundSelect")?.addEventListener("change", async (e) => {
+    state.sound_selected = e.target.value;
+    audioContextPrimed = true; 
+    playAlertSound(); 
+    await saveState();
+  });
+
+  document.getElementById("volumeRange")?.addEventListener("input", (e) => {
+    state.sound_volume = parseFloat(e.target.value);
+  });
+  document.getElementById("volumeRange")?.addEventListener("change", async () => {
+    audioContextPrimed = true; 
+    playAlertSound(); 
+    await saveState();
+  });
+
+  document.getElementById("testSoundBtn")?.addEventListener("click", () => {
+    audioContextPrimed = true;
+    playAlertSound();
+  });
+
   document.querySelectorAll(".cat-card").forEach((card) => {
     card.addEventListener("click", async () => {
       const catName = card.dataset.category;
-      const panel = card.dataset.panel; // "broad" ou "mid"
+      const panel = card.dataset.panel;
 
       if (panel === "broad") {
         if (state.broad_categories.has(catName)) state.broad_categories.delete(catName);
@@ -712,20 +745,15 @@ function notify(alert){
       };
     }
   }
+  playAlertSound();
 }
 
 function renderLevelPanel() {
-  // 1. Atualiza as ABAS (Visualização)
   document.querySelectorAll(".level-btn").forEach((btn) => {
     const lvl = btn.dataset.level;
-    if (state.current_tab === lvl) {
-      btn.classList.add("active");
-    } else {
-      btn.classList.remove("active");
-    }
+    btn.classList.toggle("active", state.current_tab === lvl);
   });
 
-  // 2. Mostra apenas o painel da aba selecionada (3 Menus Diferentes!)
   const panelBroad = document.getElementById("panel-broad");
   const panelMid = document.getElementById("panel-mid");
   const panelSpecific = document.getElementById("panel-specific");
@@ -734,7 +762,6 @@ function renderLevelPanel() {
   if (panelMid) panelMid.style.display = state.current_tab === "mid" ? "block" : "none";
   if (panelSpecific) panelSpecific.style.display = state.current_tab === "specific" ? "block" : "none";
 
-  // 3. Sincroniza os Botões de Ligar/Desligar dentro dos painéis
   document.querySelectorAll(".btn-activate-level").forEach((btn) => {
     const lvl = btn.dataset.level;
     if (state.active_levels.has(lvl)) {
@@ -746,7 +773,6 @@ function renderLevelPanel() {
     }
   });
 
-  // Sincroniza os cartões de categorias
   document.querySelectorAll(`.cat-card[data-panel="broad"]`).forEach(c => {
     c.classList.toggle("active", state.broad_categories.has(c.dataset.category));
   });
@@ -755,11 +781,7 @@ function renderLevelPanel() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Init
-// ---------------------------------------------------------------------------
 async function init() {
-  // 1. BARREIRA RÁPIDA: Verifica se existe auth localmente
   const auth = await new Promise((resolve) => {
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
       chrome.storage.local.get(["telegramAuth"], (res) => resolve(res.telegramAuth));
@@ -768,25 +790,20 @@ async function init() {
     }
   });
 
-  // Se não tem registo local, nem carrega o resto. Vai para o login!
   if (!auth || !auth.logged) {
     openLogin();
     return;
   }
 
-  // 2. Se passou na primeira barreira, carrega a UI base
   await loadState();
   renderLevelPanel();
 
-  // 3. BARREIRA SEGURA: Confirma com a API se a sessão é real
   const isSessionValid = await loadUser();
-  if (!isSessionValid) return; // Se não for válida, o loadUser já redirecionou e paramos aqui
+  if (!isSessionValid) return;
 
-  // 4. Sessão validada! Carrega os dados pesados
   loadGroups();
   bindEvents();
   
-  // 5. Sincroniza estado do monitoramento com o Backend (Resiliência a F5)
   try {
     const res = await fetch(`${API_BASE_URL}/watch/status`);
     if (res.ok) {
@@ -795,9 +812,7 @@ async function init() {
         monitoringActive = true;
         setScannerState(true);
         startAlertsPolling();
-
-        // Sincroniza grupos se o backend tiver uma lista ativa
-        if (statusData.config?.group_ids && statusData.config.group_ids.length > 0) {
+        if (statusData.config?.group_ids?.length > 0) {
           state.selectedGroupIds = new Set(statusData.config.group_ids);
           saveState();
         }
@@ -814,5 +829,4 @@ async function init() {
   }
 }
 
-//obriga o carregamento do DOM antes de iniciar a aplicação
 document.addEventListener("DOMContentLoaded", init);

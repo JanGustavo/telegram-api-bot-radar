@@ -754,6 +754,54 @@ textarea {
    8. ALERTAS
 ============================================================================= */
 
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    padding: 6px;
+    min-width: 32px;
+    background: var(--input-bg);
+}
+
+.sound-settings-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: var(--input-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.sound-select-compact {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    flex: 1;
+}
+
+.sound-select-compact option {
+    background: var(--bg-dark);
+}
+
+.volume-slider {
+    width: 80px;
+    height: 4px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
 .alert-item {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-color);
